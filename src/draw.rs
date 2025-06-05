@@ -1,7 +1,8 @@
-use std::io::{Write};
 use std::cmp;
 
 use bitflags::bitflags;
+
+use crate::common;
 
 const HORZ_BORDER: &'static str = "─";
 const VERT_BORDER: &'static str = "│";
@@ -15,6 +16,7 @@ const MIN_HEIGHT: usize = 1;
 
 const DEFAULT_STRING: &'static str = "";
 
+#[derive(Debug)]
 pub enum DrawError {
     HeightTooSmall,
     ContentTooLong,
@@ -39,9 +41,11 @@ fn determine_corner(location: DrawFlags, options: &DrawFlags) -> bool {
     (count == 2) || (count == 1 && options.contains(DrawFlags::PRESERVE_CORNERS))
 }
 
-pub fn draw_box<W: Write>(mut stdout: W, width: usize, height: usize, content_lines: Vec<String>, options: DrawFlags) -> Result<(), DrawError> {
-    let use_width = cmp::max(MIN_WIDTH, width - 2);
-    let use_height = cmp::max(MIN_HEIGHT, height);
+pub fn draw_box(buffer: Vec<String>, position: common::Vec2, size: common::Vec2, content_lines: Vec<String>, options: DrawFlags) -> Result<Vec<String>, DrawError> {
+    let mut buffer = buffer;
+
+    let use_width = cmp::max(MIN_WIDTH, size.x - 2);
+    let use_height = cmp::max(MIN_HEIGHT, size.y - 2);
 
     if content_lines.len() > use_height {
         return Err(DrawError::HeightTooSmall);
@@ -59,7 +63,8 @@ pub fn draw_box<W: Write>(mut stdout: W, width: usize, height: usize, content_li
     let left = if options.contains(DrawFlags::LEFT) { VERT_BORDER } else { " " };
     let right = if options.contains(DrawFlags::RIGHT) { VERT_BORDER } else { " " };
 
-    write!(stdout, "{}{}{}\n", top_left, top.repeat(use_width), top_right).unwrap();
+    buffer[position.y] = format!("{}{}{}", top_left, top.repeat(use_width), top_right);
+
     for i in 0..use_height {
         let curr_line = content_lines.get(i).unwrap_or(empty);
 
@@ -75,9 +80,15 @@ pub fn draw_box<W: Write>(mut stdout: W, width: usize, height: usize, content_li
             " ".repeat(use_width)
         };
 
-        write!(stdout, "{}{}{}\n", left, content, right).unwrap();
+        if (position.y + 1 + i) >= buffer.len() {
+            continue;
+        }
+        buffer[position.y + 1 + i] = format!("{}{}{}", left, content, right);
     }
-    write!(stdout, "{}{}{}\n", bottom_left, bottom.repeat(use_width), bottom_right).unwrap();
+    if (position.y + 1 + use_height) >= buffer.len() {
+        return Ok(buffer);
+    }
+    buffer[position.y + 1 + use_height] = format!("{}{}{}", bottom_left, bottom.repeat(use_width), bottom_right);
 
-    return Ok(());
+    Ok(buffer)
 }
