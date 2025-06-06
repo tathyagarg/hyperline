@@ -17,30 +17,46 @@ fn main() {
     stdout.flush().unwrap();
 
     let size = termion::terminal_size().unwrap();
-    let mut buffer = vec!["".to_string(); size.1 as usize];
+    println!("Terminal size: {}x{}", size.0, size.1);
 
-    buffer = draw::draw_box(
-        buffer.clone(),
-        common::Vec2{ x: 0, y: 0 },
-        common::Vec2{ x: size.0 as usize, y: size.1 as usize },
-        vec![
-            "Hello".to_string(),
-            "World".to_string(),
-            "This".to_string(),
-        ],
-        draw::DrawFlags::ALL
-    ).unwrap();
+    let mut buffer = vec![" ".repeat(size.0.into()); size.1 as usize];
+
+    let box_coords = [
+        common::Vec2 { x: 1, y: 1 },
+        common::Vec2 { x: 6, y: 1 },
+        common::Vec2 { x: 1, y: 5 },
+        common::Vec2 { x: 6, y: 5 },
+    ];
+
+    for coord in box_coords.iter() {
+        buffer = draw::draw_box(
+            buffer.clone(),
+            common::Vec2 { x: coord.x, y: coord.y },
+            common::Vec2 { x: 5, y: 4 },
+            vec![],
+            draw::DrawFlags::ALL,
+            false
+        ).unwrap();
+    }
+
+    write!(stdout, "{}", termion::cursor::Hide).unwrap();
+
+    let final_buffer = buffer.join("\r\n");
+    write!(stdout, "{}{}{}", termion::clear::All, termion::cursor::Goto(1, 1), final_buffer).unwrap();
+
+    stdout.flush().unwrap();
 
     for k in stdin.keys() {
-        match k.unwrap() {
-            termion::event::Key::Char('q') => break,
-            _ => {}
-        }
-
         let final_buffer = buffer.join("\r\n");
 
         write!(stdout, "{}{}{}", termion::clear::All, termion::cursor::Goto(1, 1), final_buffer).unwrap();
 
         stdout.flush().unwrap();
+        match k.unwrap() {
+            termion::event::Key::Char('q') => break,
+            _ => {}
+        }
     }
+
+    write!(stdout, "{}", termion::cursor::Show).unwrap();
 }

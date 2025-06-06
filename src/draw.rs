@@ -11,8 +11,10 @@ const TOP_RIGHT: &'static str = "╮";
 const BOTTOM_LEFT: &'static str = "╰";
 const BOTTOM_RIGHT: &'static str = "╯";
 
-const MIN_WIDTH: usize = 2;
-const MIN_HEIGHT: usize = 1;
+const BOX_CHAR_WIDTH: usize = TOP_RIGHT.len();
+
+const MIN_WIDTH: usize = 0;
+const MIN_HEIGHT: usize = 0;
 
 const DEFAULT_STRING: &'static str = "";
 
@@ -41,8 +43,12 @@ fn determine_corner(location: DrawFlags, options: &DrawFlags) -> bool {
     (count == 2) || (count == 1 && options.contains(DrawFlags::PRESERVE_CORNERS))
 }
 
-pub fn draw_box(buffer: Vec<String>, position: common::Vec2, size: common::Vec2, content_lines: Vec<String>, options: DrawFlags) -> Result<Vec<String>, DrawError> {
+pub fn draw_box(buffer: Vec<String>, position: common::Vec2, size: common::Vec2, content_lines: Vec<String>, options: DrawFlags, crash: bool) -> Result<Vec<String>, DrawError> {
     let mut buffer = buffer;
+    let max_size = common::Vec2 {
+        x: buffer.iter().map(|s| s.len()).max().unwrap(),
+        y: buffer.len(),
+    };
 
     let use_width = cmp::max(MIN_WIDTH, size.x - 2);
     let use_height = cmp::max(MIN_HEIGHT, size.y - 2);
@@ -63,7 +69,23 @@ pub fn draw_box(buffer: Vec<String>, position: common::Vec2, size: common::Vec2,
     let left = if options.contains(DrawFlags::LEFT) { VERT_BORDER } else { " " };
     let right = if options.contains(DrawFlags::RIGHT) { VERT_BORDER } else { " " };
 
-    buffer[position.y] = format!("{}{}{}", top_left, top.repeat(use_width), top_right);
+    let max_width_edge = (2 + cmp::min(max_size.x - 2 - position.x, use_width)) * BOX_CHAR_WIDTH;
+    let max_width_mid = (2 * BOX_CHAR_WIDTH) + cmp::min(max_size.x - (2 * BOX_CHAR_WIDTH) - position.x, use_width);
+
+    let mut line = buffer[position.y].chars().collect::<Vec<char>>();
+    let replacement = format!(
+        "{}{}{}",
+        top_left,
+        top.repeat(use_width),
+        top_right
+    ).chars().take(max_width_edge).collect::<Vec<char>>();
+
+    line.splice(
+        position.x..(size.x + position.x),
+        replacement,
+    );
+
+    buffer[position.y] = line.iter().collect::<String>();
 
     for i in 0..use_height {
         let curr_line = content_lines.get(i).unwrap_or(empty);
@@ -72,23 +94,41 @@ pub fn draw_box(buffer: Vec<String>, position: common::Vec2, size: common::Vec2,
             return Err(DrawError::ContentTooLong);
         }
 
-        let content = if curr_line.len() <= use_width {
-            let line = curr_line;
-            let padded_line = format!("{:<1$}", line, use_width);
-            padded_line
-        } else {
-            " ".repeat(use_width)
-        };
+        if (position.y + 1 + i) < buffer.len() {
+            let mut line = buffer[position.y + 1 + i].chars().collect::<Vec<char>>();
+            let replacement = format!(
+                "{}{}{}",
+                left,
+                " ".repeat(use_width),
+                right
+            ).chars().take(max_width_mid).collect::<Vec<char>>();
 
-        if (position.y + 1 + i) >= buffer.len() {
-            continue;
+            line.splice(
+                position.x..(size.x + position.x),
+                replacement,
+            );
+
+            buffer[position.y + 1 + i] = line.iter().collect::<String>();
         }
-        buffer[position.y + 1 + i] = format!("{}{}{}", left, content, right);
     }
     if (position.y + 1 + use_height) >= buffer.len() {
         return Ok(buffer);
     }
-    buffer[position.y + 1 + use_height] = format!("{}{}{}", bottom_left, bottom.repeat(use_width), bottom_right);
+
+    let mut line = buffer[position.y + 1 + use_height].chars().collect::<Vec<char>>();
+    let replacement: Vec<char> = format!(
+        "{}{}{}",
+        bottom_left,
+        bottom.repeat(use_width),
+        bottom_right
+    ).chars().take(max_width_edge).collect();
+
+    line.splice(
+        position.x..(size.x + position.x),
+        replacement,
+    );
+
+    buffer[position.y + 1 + use_height] = line.iter().collect::<String>();
 
     Ok(buffer)
 }
