@@ -16,8 +16,6 @@ const BOX_CHAR_WIDTH: usize = TOP_RIGHT.len();
 const MIN_WIDTH: usize = 0;
 const MIN_HEIGHT: usize = 0;
 
-const DEFAULT_STRING: &'static str = "";
-
 #[derive(Debug)]
 pub enum DrawError {
     HeightTooSmall,
@@ -25,7 +23,7 @@ pub enum DrawError {
 }
 
 bitflags! {
-    pub struct DrawFlags: u8 {
+    pub struct BorderFlags: u8 {
         const NONE = 0b0000_0000;
         const TOP = 0b0000_0001;
         const BOTTOM = 0b0000_0010;
@@ -38,41 +36,44 @@ bitflags! {
     }
 }
 
-fn determine_corner(location: DrawFlags, options: &DrawFlags) -> bool {
-    let count = location.bits().count_ones();
-    (count == 2) || (count == 1 && options.contains(DrawFlags::PRESERVE_CORNERS))
+pub struct BoxOptions {
+    pub position: common::Vec2,
+    pub size: common::Vec2,
+    pub border_options: BorderFlags,
 }
 
-pub fn draw_box(buffer: Vec<String>, position: common::Vec2, size: common::Vec2, content_lines: Vec<String>, options: DrawFlags, crash: bool) -> Result<Vec<String>, DrawError> {
+fn determine_corner(location: BorderFlags, options: &BorderFlags) -> bool {
+    let count = location.bits().count_ones();
+    (count == 2) || (count == 1 && options.contains(BorderFlags::PRESERVE_CORNERS))
+}
+
+pub fn draw_box(
+    buffer: Vec<String>,
+    options: BoxOptions,
+) -> Result<Vec<String>, DrawError> {
     let mut buffer = buffer;
     let max_size = common::Vec2 {
         x: buffer.iter().map(|s| s.len()).max().unwrap(),
         y: buffer.len(),
     };
 
-    let use_width = cmp::max(MIN_WIDTH, size.x - 2);
-    let use_height = cmp::max(MIN_HEIGHT, size.y - 2);
+    let use_width = cmp::max(MIN_WIDTH, options.size.x - 2);
+    let use_height = cmp::max(MIN_HEIGHT, options.size.y - 2);
 
-    if content_lines.len() > use_height {
-        return Err(DrawError::HeightTooSmall);
-    }
+    let top_left = if determine_corner(BorderFlags::LEFT | BorderFlags::TOP, &options.border_options) { TOP_LEFT } else { " " };
+    let top_right = if determine_corner(BorderFlags::RIGHT | BorderFlags::TOP, &options.border_options) { TOP_RIGHT } else { " " };
+    let bottom_left = if determine_corner(BorderFlags::LEFT | BorderFlags::BOTTOM, &options.border_options) { BOTTOM_LEFT } else { " " };
+    let bottom_right = if determine_corner(BorderFlags::RIGHT | BorderFlags::BOTTOM, &options.border_options) { BOTTOM_RIGHT } else { " " };
 
-    let empty = &DEFAULT_STRING.to_string();
+    let top = if options.border_options.contains(BorderFlags::TOP) { HORZ_BORDER } else { " " };
+    let bottom = if options.border_options.contains(BorderFlags::BOTTOM) { HORZ_BORDER } else { " " };
+    let left = if options.border_options.contains(BorderFlags::LEFT) { VERT_BORDER } else { " " };
+    let right = if options.border_options.contains(BorderFlags::RIGHT) { VERT_BORDER } else { " " };
 
-    let top_left = if determine_corner(DrawFlags::LEFT | DrawFlags::TOP, &options) { TOP_LEFT } else { " " };
-    let top_right = if determine_corner(DrawFlags::RIGHT | DrawFlags::TOP, &options) { TOP_RIGHT } else { " " };
-    let bottom_left = if determine_corner(DrawFlags::LEFT | DrawFlags::BOTTOM, &options) { BOTTOM_LEFT } else { " " };
-    let bottom_right = if determine_corner(DrawFlags::RIGHT | DrawFlags::BOTTOM, &options) { BOTTOM_RIGHT } else { " " };
+    let max_width_edge = (2 + cmp::min(max_size.x - 2 - options.position.x, use_width)) * BOX_CHAR_WIDTH;
+    let max_width_mid = (2 * BOX_CHAR_WIDTH) + cmp::min(max_size.x - (2 * BOX_CHAR_WIDTH) - options.position.x, use_width);
 
-    let top = if options.contains(DrawFlags::TOP) { HORZ_BORDER } else { " " };
-    let bottom = if options.contains(DrawFlags::BOTTOM) { HORZ_BORDER } else { " " };
-    let left = if options.contains(DrawFlags::LEFT) { VERT_BORDER } else { " " };
-    let right = if options.contains(DrawFlags::RIGHT) { VERT_BORDER } else { " " };
-
-    let max_width_edge = (2 + cmp::min(max_size.x - 2 - position.x, use_width)) * BOX_CHAR_WIDTH;
-    let max_width_mid = (2 * BOX_CHAR_WIDTH) + cmp::min(max_size.x - (2 * BOX_CHAR_WIDTH) - position.x, use_width);
-
-    let mut line = buffer[position.y].chars().collect::<Vec<char>>();
+    let mut line = buffer[options.position.y].chars().collect::<Vec<char>>();
     let replacement = format!(
         "{}{}{}",
         top_left,
@@ -81,21 +82,15 @@ pub fn draw_box(buffer: Vec<String>, position: common::Vec2, size: common::Vec2,
     ).chars().take(max_width_edge).collect::<Vec<char>>();
 
     line.splice(
-        position.x..(size.x + position.x),
+        options.position.x..(options.size.x + options.position.x),
         replacement,
     );
 
-    buffer[position.y] = line.iter().collect::<String>();
+    buffer[options.position.y] = line.iter().collect::<String>();
 
     for i in 0..use_height {
-        let curr_line = content_lines.get(i).unwrap_or(empty);
-
-        if curr_line.len() > use_width {
-            return Err(DrawError::ContentTooLong);
-        }
-
-        if (position.y + 1 + i) < buffer.len() {
-            let mut line = buffer[position.y + 1 + i].chars().collect::<Vec<char>>();
+        if (options.position.y + 1 + i) < buffer.len() {
+            let mut line = buffer[options.position.y + 1 + i].chars().collect::<Vec<char>>();
             let replacement = format!(
                 "{}{}{}",
                 left,
@@ -104,18 +99,20 @@ pub fn draw_box(buffer: Vec<String>, position: common::Vec2, size: common::Vec2,
             ).chars().take(max_width_mid).collect::<Vec<char>>();
 
             line.splice(
-                position.x..(size.x + position.x),
+                options.position.x..(options.size.x + options.position.x),
                 replacement,
             );
 
-            buffer[position.y + 1 + i] = line.iter().collect::<String>();
+            buffer[options.position.y + 1 + i] = line.iter().collect::<String>();
         }
     }
-    if (position.y + 1 + use_height) >= buffer.len() {
+
+    // Don't draw bottom border if overflowing
+    if (options.position.y + 1 + use_height) >= buffer.len() {
         return Ok(buffer);
     }
 
-    let mut line = buffer[position.y + 1 + use_height].chars().collect::<Vec<char>>();
+    let mut line = buffer[options.position.y + 1 + use_height].chars().collect::<Vec<char>>();
     let replacement: Vec<char> = format!(
         "{}{}{}",
         bottom_left,
@@ -124,11 +121,11 @@ pub fn draw_box(buffer: Vec<String>, position: common::Vec2, size: common::Vec2,
     ).chars().take(max_width_edge).collect();
 
     line.splice(
-        position.x..(size.x + position.x),
+        options.position.x..(options.size.x + options.position.x),
         replacement,
     );
 
-    buffer[position.y + 1 + use_height] = line.iter().collect::<String>();
+    buffer[options.position.y + 1 + use_height] = line.iter().collect::<String>();
 
     Ok(buffer)
 }

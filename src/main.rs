@@ -31,11 +31,11 @@ fn main() {
     for coord in box_coords.iter() {
         buffer = draw::draw_box(
             buffer.clone(),
-            common::Vec2 { x: coord.x, y: coord.y },
-            common::Vec2 { x: 5, y: 4 },
-            vec![],
-            draw::DrawFlags::ALL,
-            false
+            draw::BoxOptions {
+                position: common::Vec2 { x: coord.x, y: coord.y },
+                size: common::Vec2 { x: 5, y: 4 },
+                border_options: draw::BorderFlags::ALL,
+            }
         ).unwrap();
     }
 
