@@ -18,8 +18,8 @@ fn main() {
     let mut buffer = vec![" ".repeat(size.0.into()); size.1 as usize];
 
     let box_coords = [
-        common::Vec2 { x: 1, y: 1 },
-        common::Vec2 { x: 20, y: 1 },
+        common::Vec2 { x: 1, y: -1 },
+        common::Vec2 { x: 20, y: 2 },
         common::Vec2 { x: 1, y: 8 },
         common::Vec2 { x: 6, y: 14 },
     ];
@@ -40,10 +40,13 @@ fn main() {
                     x: 10 as usize,
                     y: 4,
                 },
-                border_options: draw::BorderFlags::TOP
-                    | draw::BorderFlags::PRESERVE_CORNERS
-                    | draw::BorderFlags::LEFT,
+                border_options: draw::BorderFlags::ALL,
                 background_color: Some(common::Color {
+                    r: (255 * (i == 0) as u8),
+                    g: (255 * (i == 1) as u8),
+                    b: (255 * (i == 2) as u8),
+                }),
+                border_color: Some(common::Color {
                     r: (255 * (i == 0) as u8),
                     g: (255 * (i == 1) as u8),
                     b: (255 * (i == 2) as u8),

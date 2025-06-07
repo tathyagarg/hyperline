@@ -1,6 +1,6 @@
-pub struct Vec2 {
-    pub x: usize,
-    pub y: usize,
+pub struct Vec2<T = usize> {
+    pub x: T,
+    pub y: T,
 }
 
 pub struct Color {
