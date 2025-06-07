@@ -18,8 +18,11 @@ fn main() {
     let mut buffer = vec![" ".repeat(size.0.into()); size.1 as usize];
 
     let box_coords = [
-        common::Vec2 { x: 1, y: -1 },
-        common::Vec2 { x: 20, y: 2 },
+        common::Vec2 { x: -4, y: -2 },
+        common::Vec2 {
+            x: size.0 as i8 - 10,
+            y: 2,
+        },
         common::Vec2 { x: 1, y: 8 },
         common::Vec2 { x: 6, y: 14 },
     ];

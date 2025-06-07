@@ -127,7 +127,13 @@ pub fn draw_box(
         )
         .chars()
         .skip(cmp::max(0, -options.position.x) as usize)
-        .take(cmp::min(options.screen_size.x, options.size.x))
+        .take(cmp::min(
+            options.screen_size.x,
+            cmp::min(
+                options.size.x,
+                (options.screen_size.x as i8 - options.position.x) as usize,
+            ),
+        ))
         .collect::<String>();
 
         let top_index = cmp::max(options.position.y, 0) as usize;
@@ -152,7 +158,13 @@ pub fn draw_box(
         )
         .chars()
         .skip(cmp::max(0, -options.position.x) as usize)
-        .take(cmp::min(options.screen_size.x, options.size.x))
+        .take(cmp::min(
+            options.screen_size.x,
+            cmp::min(
+                options.size.x,
+                (options.screen_size.x as i8 - options.position.x) as usize,
+            ),
+        ))
         .collect::<String>();
 
         let bottom_prefix = take_visible(
@@ -178,13 +190,31 @@ pub fn draw_box(
     )
     .chars()
     .skip(cmp::max(0, -options.position.x) as usize)
-    .take(cmp::min(options.screen_size.x, options.size.x))
+    .take(cmp::min(
+        options.screen_size.x,
+        cmp::min(
+            options.size.x,
+            (options.screen_size.x as i8 - options.position.x) as usize,
+        ),
+    ))
     .collect::<String>();
 
     if options.background_color.is_some() {
         let bg_ansi = options.background_color.as_ref().unwrap().bg();
-        middle_border.insert_str(BORDER_WIDTH, &bg_ansi);
-        middle_border.insert_str(middle_border.len() - BORDER_WIDTH, "\x1b[0m");
+        middle_border.insert_str(
+            if options.position.x >= 0 {
+                BORDER_WIDTH
+            } else {
+                0
+            },
+            &bg_ansi,
+        );
+
+        let last_len = middle_border.chars().last().unwrap().len_utf8();
+        middle_border.insert_str(
+            middle_border.len() - (BORDER_WIDTH * (last_len == BORDER_WIDTH) as usize),
+            "\x1b[0m",
+        );
     }
 
     for i in 1..options.size.y.saturating_sub(1) {
