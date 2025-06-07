@@ -1,15 +1,11 @@
 extern crate termion;
 
-use std::io::{
-    stdout,
-    stdin,
-    Write,
-};
-use termion::raw::IntoRawMode;
+use std::io::{Write, stdin, stdout};
 use termion::input::TermRead;
+use termion::raw::IntoRawMode;
 
-mod draw;
 mod common;
+mod draw;
 
 fn main() {
     let mut stdout = stdout().into_raw_mode().unwrap();
@@ -23,33 +19,66 @@ fn main() {
 
     let box_coords = [
         common::Vec2 { x: 1, y: 1 },
-        common::Vec2 { x: 6, y: 1 },
-        common::Vec2 { x: 1, y: 5 },
-        common::Vec2 { x: 6, y: 5 },
+        common::Vec2 { x: 20, y: 1 },
+        common::Vec2 { x: 1, y: 8 },
+        common::Vec2 { x: 6, y: 14 },
     ];
 
-    for coord in box_coords.iter() {
-        buffer = draw::draw_box(
-            buffer.clone(),
+    for (i, coord) in box_coords.iter().enumerate() {
+        draw::draw_box(
+            &mut buffer,
             draw::BoxOptions {
-                position: common::Vec2 { x: coord.x, y: coord.y },
-                size: common::Vec2 { x: 5, y: 4 },
-                border_options: draw::BorderFlags::ALL,
-            }
-        ).unwrap();
+                screen_size: common::Vec2 {
+                    x: size.0 as usize,
+                    y: size.1 as usize,
+                },
+                position: common::Vec2 {
+                    x: coord.x,
+                    y: coord.y,
+                },
+                size: common::Vec2 {
+                    x: 10 as usize,
+                    y: 4,
+                },
+                border_options: draw::BorderFlags::TOP
+                    | draw::BorderFlags::PRESERVE_CORNERS
+                    | draw::BorderFlags::LEFT,
+                background_color: Some(common::Color {
+                    r: (255 * (i == 0) as u8),
+                    g: (255 * (i == 1) as u8),
+                    b: (255 * (i == 2) as u8),
+                }),
+            },
+            i == 4, // Alternate crash state for demonstration
+        )
+        .unwrap();
     }
 
     write!(stdout, "{}", termion::cursor::Hide).unwrap();
 
     let final_buffer = buffer.join("\r\n");
-    write!(stdout, "{}{}{}", termion::clear::All, termion::cursor::Goto(1, 1), final_buffer).unwrap();
+    write!(
+        stdout,
+        "{}{}{}",
+        termion::clear::All,
+        termion::cursor::Goto(1, 1),
+        final_buffer
+    )
+    .unwrap();
 
     stdout.flush().unwrap();
 
     for k in stdin.keys() {
         let final_buffer = buffer.join("\r\n");
 
-        write!(stdout, "{}{}{}", termion::clear::All, termion::cursor::Goto(1, 1), final_buffer).unwrap();
+        write!(
+            stdout,
+            "{}{}{}",
+            termion::clear::All,
+            termion::cursor::Goto(1, 1),
+            final_buffer
+        )
+        .unwrap();
 
         stdout.flush().unwrap();
         match k.unwrap() {
