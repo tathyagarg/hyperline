@@ -1,4 +1,5 @@
 use std::cmp;
+use std::rc::Rc;
 
 use crate::common;
 use crate::draw::border;
@@ -22,8 +23,11 @@ pub struct BoxOptions {
     pub border_color: Option<common::Color>,
     pub background_color: Option<common::Color>,
     pub text_color: Option<common::Color>,
+
+    pub content: Option<Vec<String>>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct BoxChar {
     prefix: String,
     content: String,
@@ -42,35 +46,6 @@ fn compile_border_string(border_chars: &Vec<&mut BoxChar>) -> String {
         border_string.push_str(&border_char.to_string());
     }
     border_string
-}
-
-fn take_visible(string: &str, max_length: usize) -> String {
-    if max_length == 0 {
-        return String::new();
-    }
-
-    let mut out = String::new();
-    let mut chars = string.chars().peekable();
-    let mut length = 0;
-
-    while let Some(c) = chars.next() {
-        out.push(c);
-        if c == '\x1b' {
-            while let Some(next) = chars.next() {
-                out.push(next);
-                if next == 'm' {
-                    break;
-                }
-            }
-        } else {
-            length += 1;
-            if length >= max_length {
-                break;
-            }
-        }
-    }
-
-    out
 }
 
 fn make_border(
@@ -259,7 +234,11 @@ pub fn draw_box(
             .collect::<Vec<_>>();
 
         let top_index = cmp::max(options.position.y, 0) as usize;
-        let top_prefix = take_visible(&buffer[top_index], cmp::max(options.position.x, 0) as usize);
+
+        let top_prefix = buffer[top_index]
+            .get(..cmp::max(options.position.x, 0) as usize)
+            .unwrap_or("");
+
         let top_suffix = &buffer[top_index]
             .get(top_prefix.len() + top_border.len()..)
             .unwrap_or("");
@@ -298,10 +277,10 @@ pub fn draw_box(
             ))
             .collect::<Vec<_>>();
 
-        let bottom_prefix = take_visible(
-            &buffer[bottom_index as usize],
-            cmp::max(options.position.x, 0) as usize,
-        );
+        let bottom_prefix = buffer[bottom_index as usize]
+            .get(..cmp::max(options.position.x, 0) as usize)
+            .unwrap_or("");
+
         let bottom_suffix = &buffer[bottom_index as usize]
             .get(bottom_prefix.len() + bottom_border.len()..)
             .unwrap_or("");
@@ -322,7 +301,7 @@ pub fn draw_box(
         BorderFlags::LEFT | BorderFlags::RIGHT,
         border_chars.left,
         border_chars.right,
-        "a",
+        " ",
         options.size.x.saturating_sub(2),
     );
 
@@ -355,19 +334,38 @@ pub fn draw_box(
     for i in 1..options.size.y.saturating_sub(1) {
         let middle_index = options.position.y + (i as i16);
         if middle_index >= 0 && middle_index < (buffer.len() as i16) {
-            let middle_prefix = take_visible(
-                &buffer[middle_index as usize],
-                cmp::max(options.position.x, 0) as usize,
-            );
+            let mut this_line = middle_border
+                .iter()
+                .map(|c| (*c).clone())
+                .collect::<Vec<_>>();
+
+            // convert this line to mutable references
+            let mut this_line: Vec<&mut BoxChar> = this_line.iter_mut().collect();
+
+            let middle_prefix = buffer[middle_index as usize]
+                .get(..cmp::max(options.position.x, 0) as usize)
+                .unwrap_or("");
 
             let middle_suffix = &buffer[middle_index as usize]
                 .get(middle_prefix.len() + middle_border.len()..)
                 .unwrap_or("");
 
+            if options.content.is_some() && options.content.as_ref().unwrap().len() > i - 1 {
+                let content = options.content.as_ref().unwrap().get(i - 1).unwrap();
+
+                for (j, char) in content
+                    .chars()
+                    .skip(cmp::max(0, -options.position.x - 1) as usize)
+                    .enumerate()
+                {
+                    this_line[j + (options.position.x >= 0) as usize].content = char.to_string();
+                }
+            }
+
             buffer[middle_index as usize] = format!(
                 "{}{}{}",
                 middle_prefix,
-                compile_border_string(&middle_border),
+                compile_border_string(&this_line),
                 middle_suffix
             );
         }

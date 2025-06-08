@@ -17,54 +17,29 @@ fn main() {
 
     let mut buffer = vec![" ".repeat(size.0.into()); size.1 as usize];
 
-    let box_coords = [
-        common::Vec2 { x: -4, y: -2 },
-        common::Vec2 {
-            x: size.0 as i16 - 10,
-            y: 2,
-        },
-        common::Vec2 { x: 1, y: 8 },
-        common::Vec2 { x: 6, y: 14 },
-    ];
+    draw::boxes::draw_box(
+        &mut buffer,
+        draw::boxes::BoxOptions {
+            screen_size: common::Vec2::new(size.0 as usize, size.1 as usize),
 
-    for (i, coord) in box_coords.iter().enumerate() {
-        draw::boxes::draw_box(
-            &mut buffer,
-            draw::boxes::BoxOptions {
-                screen_size: common::Vec2 {
-                    x: size.0 as usize,
-                    y: size.1 as usize,
-                },
-                position: common::Vec2 {
-                    x: coord.x,
-                    y: coord.y,
-                },
-                size: common::Vec2 {
-                    x: 10 as usize,
-                    y: 4,
-                },
-                border_options: draw::border::BorderFlags::ALL,
-                border_style: draw::border::BorderStyle::Rounded,
-                border_color: Some(common::Color {
-                    r: (255 * (i == 0) as u8),
-                    g: (255 * (i == 1) as u8),
-                    b: (255 * (i == 2) as u8),
-                }),
-                background_color: Some(common::Color {
-                    r: (255 * (i == 0) as u8),
-                    g: (255 * (i == 1) as u8),
-                    b: (255 * (i == 2) as u8),
-                }),
-                text_color: Some(common::Color {
-                    r: (255 * (i == 1) as u8),
-                    g: (255 * (i == 2) as u8),
-                    b: (255 * (i == 0) as u8),
-                }),
-            },
-            i == 4, // Alternate crash state for demonstration
-        )
-        .unwrap();
-    }
+            position: common::Vec2::new(0, 0),
+            size: common::Vec2::new(size.0 as usize, size.1 as usize),
+
+            border_options: draw::border::BorderFlags::ALL,
+            border_style: draw::border::BorderStyle::Rounded,
+
+            border_color: Some(common::Color::RED),
+            background_color: Some(common::Color::BLACK),
+            text_color: Some(common::Color::BLUE),
+
+            content: Some(vec![
+                "Hello, World!".to_string(),
+                "Press 'q' to exit.".to_string(),
+            ]),
+        },
+        false,
+    )
+    .unwrap();
 
     write!(stdout, "{}", termion::cursor::Hide).unwrap();
 

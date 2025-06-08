@@ -9,7 +9,38 @@ pub struct Color {
     pub b: u8,
 }
 
+impl Vec2 {
+    pub fn new<T>(x: T, y: T) -> Vec2<T> {
+        Vec2::<T> { x, y }
+    }
+}
+
 impl Color {
+    pub const BLACK: Color = Color { r: 0, g: 0, b: 0 };
+    pub const WHITE: Color = Color {
+        r: 255,
+        g: 255,
+        b: 255,
+    };
+    pub const RED: Color = Color { r: 255, g: 0, b: 0 };
+    pub const GREEN: Color = Color { r: 0, g: 255, b: 0 };
+    pub const BLUE: Color = Color { r: 0, g: 0, b: 255 };
+    pub const YELLOW: Color = Color {
+        r: 255,
+        g: 255,
+        b: 0,
+    };
+    pub const CYAN: Color = Color {
+        r: 0,
+        g: 255,
+        b: 255,
+    };
+    pub const MAGENTA: Color = Color {
+        r: 255,
+        g: 0,
+        b: 255,
+    };
+
     pub fn fg(&self) -> String {
         format!("\x1b[38;2;{};{};{}m", self.r, self.g, self.b)
     }
