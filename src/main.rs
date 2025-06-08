@@ -45,15 +45,20 @@ fn main() {
                 },
                 border_options: draw::border::BorderFlags::ALL,
                 border_style: draw::border::BorderStyle::Rounded,
+                border_color: Some(common::Color {
+                    r: (255 * (i == 0) as u8),
+                    g: (255 * (i == 1) as u8),
+                    b: (255 * (i == 2) as u8),
+                }),
                 background_color: Some(common::Color {
                     r: (255 * (i == 0) as u8),
                     g: (255 * (i == 1) as u8),
                     b: (255 * (i == 2) as u8),
                 }),
-                border_color: Some(common::Color {
-                    r: (255 * (i == 0) as u8),
-                    g: (255 * (i == 1) as u8),
-                    b: (255 * (i == 2) as u8),
+                text_color: Some(common::Color {
+                    r: (255 * (i == 1) as u8),
+                    g: (255 * (i == 2) as u8),
+                    b: (255 * (i == 0) as u8),
                 }),
             },
             i == 4, // Alternate crash state for demonstration

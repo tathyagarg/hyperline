@@ -50,10 +50,46 @@ const SHARP_BORDER_CHARS: BorderChars = BorderChars {
     bottom_right: "┘",
 };
 
+const THICK_BORDER_CHARS: BorderChars = BorderChars {
+    top: "━",
+    left: "┃",
+    right: "┃",
+    bottom: "━",
+    top_left: "┏",
+    top_right: "┓",
+    bottom_left: "┗",
+    bottom_right: "┛",
+};
+
+const DOUBLE_BORDER_CHARS: BorderChars = BorderChars {
+    top: "═",
+    left: "║",
+    right: "║",
+    bottom: "═",
+    top_left: "╔",
+    top_right: "╗",
+    bottom_left: "╚",
+    bottom_right: "╝",
+};
+
+const DOTTED_BORDER_CHARS: BorderChars = BorderChars {
+    top: "╌",
+    left: "╎",
+    right: "╎",
+    bottom: "╌",
+    top_left: "┌",
+    top_right: "┐",
+    bottom_left: "└",
+    bottom_right: "┘",
+};
+
 pub enum BorderStyle {
     Block,
     Rounded,
     Sharp,
+    Thick,
+    Double,
+    Dotted,
 }
 
 impl BorderStyle {
@@ -62,6 +98,9 @@ impl BorderStyle {
             BorderStyle::Block => &BLOCK_BORDER_CHARS,
             BorderStyle::Rounded => &ROUNDED_BORDER_CHARS,
             BorderStyle::Sharp => &SHARP_BORDER_CHARS,
+            BorderStyle::Thick => &THICK_BORDER_CHARS,
+            BorderStyle::Double => &DOUBLE_BORDER_CHARS,
+            BorderStyle::Dotted => &DOTTED_BORDER_CHARS,
         }
     }
 }

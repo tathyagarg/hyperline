@@ -19,8 +19,29 @@ pub struct BoxOptions {
     pub border_options: BorderFlags,
     pub border_style: border::BorderStyle,
 
-    pub background_color: Option<common::Color>,
     pub border_color: Option<common::Color>,
+    pub background_color: Option<common::Color>,
+    pub text_color: Option<common::Color>,
+}
+
+struct BorderChar {
+    prefix: String,
+    content: String,
+    suffix: String,
+}
+
+impl BorderChar {
+    pub fn to_string(&self) -> String {
+        format!("{}{}{}", self.prefix, self.content, self.suffix)
+    }
+}
+
+fn compile_border_string(border_chars: &Vec<&mut BorderChar>) -> String {
+    let mut border_string = String::new();
+    for border_char in border_chars.iter() {
+        border_string.push_str(&border_char.to_string());
+    }
+    border_string
 }
 
 fn take_visible(string: &str, max_length: usize) -> String {
@@ -59,8 +80,8 @@ fn make_border(
     right: &str,
     middle: &str,
     width: usize,
-) -> String {
-    let mut border_str = String::new();
+) -> Vec<BorderChar> {
+    let mut border_str = Vec::new();
 
     let left_char = if ((location.contains(BorderFlags::TOP)
         || location.contains(BorderFlags::BOTTOM))
@@ -71,9 +92,19 @@ fn make_border(
     } else {
         " "
     };
-    border_str.push_str(left_char);
+    border_str.push(BorderChar {
+        prefix: String::new(),
+        content: left_char.to_string(),
+        suffix: String::new(),
+    });
 
-    border_str.push_str(middle.repeat(width).as_str());
+    for _ in 0..width {
+        border_str.push(BorderChar {
+            prefix: String::new(),
+            content: middle.to_string(),
+            suffix: String::new(),
+        });
+    }
 
     let right_char = if ((location.contains(BorderFlags::TOP)
         || location.contains(BorderFlags::BOTTOM))
@@ -84,56 +115,87 @@ fn make_border(
     } else {
         " "
     };
-    border_str.push_str(right_char);
+
+    border_str.push(BorderChar {
+        prefix: String::new(),
+        content: right_char.to_string(),
+        suffix: String::new(),
+    });
 
     border_str
 }
 
 fn add_background_color(
-    border: &mut String,
+    border: &mut Vec<&mut BorderChar>,
     border_style: &border::BorderStyle,
-    position: &common::Vec2<i16>,
+    // position: &common::Vec2<i16>,
     background_color: &Option<common::Color>,
 ) {
     if let Some(bg_color) = background_color {
         let border_width = border_style.chars().border_width();
         let bg_ansi = bg_color.bg();
-        border.insert_str((position.x >= 0) as usize * border_width, &bg_ansi);
 
-        let ends_with_border = border.chars().last().unwrap().len_utf8() == border_width;
-        border.insert_str(
-            border.len() - (border_width * ends_with_border as usize),
-            "\x1b[0m",
-        );
+        if border.first_mut().unwrap().content.len() == border_width {
+            // second mut
+            if let Some(character) = border.get_mut(1) {
+                character.prefix.insert_str(0, &bg_ansi);
+            }
+
+            let mut index = border.len() - 1;
+            if border.last().unwrap().content.len() == border_width {
+                index -= 1;
+            }
+            if let Some(last) = border.get_mut(index) {
+                last.suffix.insert_str(0, "\x1b[0m");
+            }
+        } else {
+            border.first_mut().unwrap().prefix.insert_str(0, &bg_ansi);
+
+            let mut index = border.len() - 1;
+            if border.last().unwrap().content.len() == border_width {
+                index -= 1;
+            }
+
+            border
+                .get_mut(index)
+                .unwrap()
+                .suffix
+                .insert_str(0, "\x1b[0m");
+        }
     }
 }
 
 fn add_border_color(
-    border: &mut String,
-    border_style: &border::BorderStyle,
+    border: &mut Vec<&mut BorderChar>,
     position: &common::Vec2<i16>,
     border_color: &Option<common::Color>,
 ) {
     if let Some(border_color) = border_color {
-        let border_width = border_style.chars().border_width();
         let border_ansi = border_color.fg();
         if position.x >= 0 {
-            border.insert_str(0, &border_ansi);
-            border.insert_str(border_width + border_ansi.len(), "\x1b[0m");
+            if let Some(first) = border.first_mut() {
+                first.prefix.insert_str(0, &border_ansi);
+                first.suffix.insert_str(0, "\x1b[0m");
+            }
         }
 
-        if border.chars().last().unwrap().len_utf8() == border_width {
-            border.insert_str(border.len() - border_width, &border_ansi);
-            border.insert_str(border.len(), "\x1b[0m");
+        if let Some(last) = border.last_mut() {
+            last.prefix.insert_str(0, &border_ansi);
+            last.suffix.insert_str(0, "\x1b[0m");
         }
     }
 }
 
-fn add_edge_border_color(border: &mut String, border_color: &Option<common::Color>) {
+fn add_edge_border_color(border: &mut Vec<&mut BorderChar>, border_color: &Option<common::Color>) {
     if let Some(border_color) = border_color {
         let border_ansi = border_color.fg();
-        border.insert_str(0, &border_ansi);
-        border.insert_str(border.len(), "\x1b[0m");
+        if let Some(first) = border.first_mut() {
+            first.prefix.insert_str(0, &border_ansi);
+        }
+
+        if let Some(last) = border.last_mut() {
+            last.suffix.insert_str(0, "\x1b[0m");
+        }
     }
 }
 
@@ -146,24 +208,26 @@ pub fn draw_box(
 
     if options.position.y >= 0 {
         // Part 1: Top border
-        let mut top_border = make_border(
+        let mut top_border_data = make_border(
             &options.border_options,
             BorderFlags::TOP,
             border_chars.top_left,
             border_chars.top_right,
             border_chars.top,
             options.size.x.saturating_sub(2),
-        )
-        .chars()
-        .skip(cmp::max(0, -options.position.x) as usize)
-        .take(cmp::min(
-            options.screen_size.x,
-            cmp::min(
-                options.size.x,
-                (options.screen_size.x as i16 - options.position.x) as usize,
-            ),
-        ))
-        .collect::<String>();
+        );
+
+        let mut top_border = top_border_data
+            .iter_mut()
+            .skip(cmp::max(0, -options.position.x) as usize)
+            .take(cmp::min(
+                options.screen_size.x,
+                cmp::min(
+                    options.size.x,
+                    (options.screen_size.x as i16 - options.position.x) as usize,
+                ),
+            ))
+            .collect::<Vec<_>>();
 
         let top_index = cmp::max(options.position.y, 0) as usize;
         let top_prefix = take_visible(&buffer[top_index], cmp::max(options.position.x, 0) as usize);
@@ -173,30 +237,37 @@ pub fn draw_box(
 
         add_edge_border_color(&mut top_border, &options.border_color);
 
-        buffer[top_index] = format!("{}{}{}", top_prefix, top_border, top_suffix);
+        buffer[top_index] = format!(
+            "{}{}{}",
+            top_prefix,
+            compile_border_string(&top_border),
+            top_suffix
+        );
     }
 
     // Part 2: Bottom border
     let bottom_index = options.position.y + (options.size.y as i16) - 1;
     if bottom_index >= 0 && bottom_index < (buffer.len() as i16) {
-        let mut bottom_border = make_border(
+        let mut bottom_border_data = make_border(
             &options.border_options,
             BorderFlags::BOTTOM,
             border_chars.bottom_left,
             border_chars.bottom_right,
             border_chars.bottom,
             options.size.x.saturating_sub(2),
-        )
-        .chars()
-        .skip(cmp::max(0, -options.position.x) as usize)
-        .take(cmp::min(
-            options.screen_size.x,
-            cmp::min(
-                options.size.x,
-                (options.screen_size.x as i16 - options.position.x) as usize,
-            ),
-        ))
-        .collect::<String>();
+        );
+
+        let mut bottom_border = bottom_border_data
+            .iter_mut()
+            .skip(cmp::max(0, -options.position.x) as usize)
+            .take(cmp::min(
+                options.screen_size.x,
+                cmp::min(
+                    options.size.x,
+                    (options.screen_size.x as i16 - options.position.x) as usize,
+                ),
+            ))
+            .collect::<Vec<_>>();
 
         let bottom_prefix = take_visible(
             &buffer[bottom_index as usize],
@@ -208,43 +279,44 @@ pub fn draw_box(
 
         add_edge_border_color(&mut bottom_border, &options.border_color);
 
-        buffer[bottom_index as usize] =
-            format!("{}{}{}", bottom_prefix, bottom_border, bottom_suffix);
+        buffer[bottom_index as usize] = format!(
+            "{}{}{}",
+            bottom_prefix,
+            compile_border_string(&bottom_border),
+            bottom_suffix
+        );
     }
 
     // Part 3: Middle border
-    let mut middle_border = make_border(
+    let mut middle_border_data = make_border(
         &options.border_options,
         BorderFlags::LEFT | BorderFlags::RIGHT,
         border_chars.left,
         border_chars.right,
         " ",
         options.size.x.saturating_sub(2),
-    )
-    .chars()
-    .skip(cmp::max(0, -options.position.x) as usize)
-    .take(cmp::min(
-        options.screen_size.x,
-        cmp::min(
-            options.size.x,
-            (options.screen_size.x as i16 - options.position.x) as usize,
-        ),
-    ))
-    .collect::<String>();
+    );
+
+    let mut middle_border = middle_border_data
+        .iter_mut()
+        .skip(cmp::max(0, -options.position.x) as usize)
+        .take(cmp::min(
+            options.screen_size.x,
+            cmp::min(
+                options.size.x,
+                (options.screen_size.x as i16 - options.position.x) as usize,
+            ),
+        ))
+        .collect::<Vec<_>>();
 
     add_background_color(
         &mut middle_border,
         &options.border_style,
-        &options.position,
+        // &options.position,
         &options.background_color,
     );
 
-    add_border_color(
-        &mut middle_border,
-        &options.border_style,
-        &options.position,
-        &options.border_color,
-    );
+    add_border_color(&mut middle_border, &options.position, &options.border_color);
 
     for i in 1..options.size.y.saturating_sub(1) {
         let middle_index = options.position.y + (i as i16);
@@ -258,8 +330,12 @@ pub fn draw_box(
                 .get(middle_prefix.len() + middle_border.len()..)
                 .unwrap_or("");
 
-            buffer[middle_index as usize] =
-                format!("{}{}{}", middle_prefix, middle_border, middle_suffix);
+            buffer[middle_index as usize] = format!(
+                "{}{}{}",
+                middle_prefix,
+                compile_border_string(&middle_border),
+                middle_suffix
+            );
         }
     }
 
