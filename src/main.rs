@@ -28,9 +28,9 @@ fn main() {
     ];
 
     for (i, coord) in box_coords.iter().enumerate() {
-        draw::draw_box(
+        draw::boxes::draw_box(
             &mut buffer,
-            draw::BoxOptions {
+            draw::boxes::BoxOptions {
                 screen_size: common::Vec2 {
                     x: size.0 as usize,
                     y: size.1 as usize,
@@ -43,8 +43,8 @@ fn main() {
                     x: 10 as usize,
                     y: 4,
                 },
-                border_options: draw::BorderFlags::ALL,
-                border_style: draw::BorderStyle::Rounded,
+                border_options: draw::border::BorderFlags::ALL,
+                border_style: draw::border::BorderStyle::Rounded,
                 background_color: Some(common::Color {
                     r: (255 * (i == 0) as u8),
                     g: (255 * (i == 1) as u8),
