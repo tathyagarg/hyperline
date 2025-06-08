@@ -20,7 +20,7 @@ fn main() {
     let box_coords = [
         common::Vec2 { x: -4, y: -2 },
         common::Vec2 {
-            x: size.0 as i8 - 10,
+            x: size.0 as i16 - 10,
             y: 2,
         },
         common::Vec2 { x: 1, y: 8 },

@@ -36,7 +36,7 @@ bitflags! {
 pub struct BoxOptions {
     pub screen_size: common::Vec2,
 
-    pub position: common::Vec2<i8>,
+    pub position: common::Vec2<i16>,
     pub size: common::Vec2,
     pub border_options: BorderFlags,
 
@@ -110,6 +110,52 @@ fn make_border(
     border_str
 }
 
+fn add_background_color(
+    border: &mut String,
+    position: &common::Vec2<i16>,
+    background_color: &Option<common::Color>,
+) {
+    if let Some(bg_color) = background_color {
+        let bg_ansi = bg_color.bg();
+        border.insert_str((position.x >= 0) as usize * BORDER_WIDTH, &bg_ansi);
+
+        let ends_with_border = border.chars().last().unwrap().len_utf8() == BORDER_WIDTH;
+        border.insert_str(
+            border.len() - (BORDER_WIDTH * ends_with_border as usize),
+            "\x1b[0m",
+        );
+    }
+}
+
+fn add_border_color(
+    border: &mut String,
+    position: &common::Vec2<i16>,
+    border_color: &Option<common::Color>,
+) {
+    // add border color if specified
+    if let Some(border_color) = border_color {
+        let border_ansi = border_color.fg();
+        if position.x >= 0 {
+            border.insert_str(0, &border_ansi);
+            border.insert_str(BORDER_WIDTH + border_ansi.len(), "\x1b[0m");
+            println!("\rborder (colored): {:?}", border);
+        }
+
+        if border.chars().last().unwrap().len_utf8() == BORDER_WIDTH {
+            border.insert_str(border.len() - BORDER_WIDTH, &border_ansi);
+            border.insert_str(border.len(), "\x1b[0m");
+        }
+    }
+}
+
+fn add_edge_border_color(border: &mut String, border_color: &Option<common::Color>) {
+    if let Some(border_color) = border_color {
+        let border_ansi = border_color.fg();
+        border.insert_str(0, &border_ansi);
+        border.insert_str(border.len(), "\x1b[0m");
+    }
+}
+
 pub fn draw_box(
     buffer: &mut Vec<String>,
     options: BoxOptions,
@@ -117,7 +163,7 @@ pub fn draw_box(
 ) -> Result<(), DrawError> {
     if options.position.y >= 0 {
         // Part 1: Top border
-        let top_border = make_border(
+        let mut top_border = make_border(
             &options.border_options,
             BorderFlags::TOP,
             TOP_LEFT,
@@ -131,7 +177,7 @@ pub fn draw_box(
             options.screen_size.x,
             cmp::min(
                 options.size.x,
-                (options.screen_size.x as i8 - options.position.x) as usize,
+                (options.screen_size.x as i16 - options.position.x) as usize,
             ),
         ))
         .collect::<String>();
@@ -142,13 +188,15 @@ pub fn draw_box(
             .get(top_prefix.len() + top_border.len()..)
             .unwrap_or("");
 
+        add_edge_border_color(&mut top_border, &options.border_color);
+
         buffer[top_index] = format!("{}{}{}", top_prefix, top_border, top_suffix);
     }
 
     // Part 2: Bottom border
-    let bottom_index = options.position.y + (options.size.y as i8) - 1;
-    if bottom_index >= 0 && bottom_index < (buffer.len() as i8) {
-        let bottom_border = make_border(
+    let bottom_index = options.position.y + (options.size.y as i16) - 1;
+    if bottom_index >= 0 && bottom_index < (buffer.len() as i16) {
+        let mut bottom_border = make_border(
             &options.border_options,
             BorderFlags::BOTTOM,
             BOTTOM_LEFT,
@@ -162,7 +210,7 @@ pub fn draw_box(
             options.screen_size.x,
             cmp::min(
                 options.size.x,
-                (options.screen_size.x as i8 - options.position.x) as usize,
+                (options.screen_size.x as i16 - options.position.x) as usize,
             ),
         ))
         .collect::<String>();
@@ -174,6 +222,8 @@ pub fn draw_box(
         let bottom_suffix = &buffer[bottom_index as usize]
             .get(bottom_prefix.len() + bottom_border.len()..)
             .unwrap_or("");
+
+        add_edge_border_color(&mut bottom_border, &options.border_color);
 
         buffer[bottom_index as usize] =
             format!("{}{}{}", bottom_prefix, bottom_border, bottom_suffix);
@@ -194,32 +244,24 @@ pub fn draw_box(
         options.screen_size.x,
         cmp::min(
             options.size.x,
-            (options.screen_size.x as i8 - options.position.x) as usize,
+            (options.screen_size.x as i16 - options.position.x) as usize,
         ),
     ))
     .collect::<String>();
 
-    if options.background_color.is_some() {
-        let bg_ansi = options.background_color.as_ref().unwrap().bg();
-        middle_border.insert_str(
-            if options.position.x >= 0 {
-                BORDER_WIDTH
-            } else {
-                0
-            },
-            &bg_ansi,
-        );
+    add_background_color(
+        &mut middle_border,
+        &options.position,
+        &options.background_color,
+    );
 
-        let last_len = middle_border.chars().last().unwrap().len_utf8();
-        middle_border.insert_str(
-            middle_border.len() - (BORDER_WIDTH * (last_len == BORDER_WIDTH) as usize),
-            "\x1b[0m",
-        );
-    }
+    add_border_color(&mut middle_border, &options.position, &options.border_color);
+
+    println!("\rborder: {:?}", middle_border);
 
     for i in 1..options.size.y.saturating_sub(1) {
-        let middle_index = options.position.y + (i as i8);
-        if middle_index >= 0 && middle_index < (buffer.len() as i8) {
+        let middle_index = options.position.y + (i as i16);
+        if middle_index >= 0 && middle_index < (buffer.len() as i16) {
             let middle_prefix = take_visible(
                 &buffer[middle_index as usize],
                 cmp::max(options.position.x, 0) as usize,
