@@ -44,6 +44,7 @@ fn main() {
                     y: 4,
                 },
                 border_options: draw::BorderFlags::ALL,
+                border_style: draw::BorderStyle::Rounded,
                 background_color: Some(common::Color {
                     r: (255 * (i == 0) as u8),
                     g: (255 * (i == 1) as u8),

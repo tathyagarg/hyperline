@@ -4,14 +4,71 @@ use bitflags::bitflags;
 
 use crate::common;
 
-const HORZ_BORDER: &'static str = "─";
-const VERT_BORDER: &'static str = "│";
-const TOP_LEFT: &'static str = "╭";
-const TOP_RIGHT: &'static str = "╮";
-const BOTTOM_LEFT: &'static str = "╰";
-const BOTTOM_RIGHT: &'static str = "╯";
+pub struct BorderChars {
+    pub top: &'static str,
+    pub left: &'static str,
+    pub right: &'static str,
+    pub bottom: &'static str,
+    pub top_left: &'static str,
+    pub top_right: &'static str,
+    pub bottom_left: &'static str,
+    pub bottom_right: &'static str,
+}
 
-const BORDER_WIDTH: usize = HORZ_BORDER.len();
+impl BorderChars {
+    pub fn border_width(&self) -> usize {
+        self.top.len()
+    }
+}
+
+const BLOCK_BORDER_CHARS: BorderChars = BorderChars {
+    top: "▄",
+    left: "▐",
+    right: "▌",
+    bottom: "▀",
+    top_left: "▗",
+    top_right: "▖",
+    bottom_left: "▝",
+    bottom_right: "▘",
+};
+
+const ROUNDED_BORDER_CHARS: BorderChars = BorderChars {
+    top: "─",
+    left: "│",
+    right: "│",
+    bottom: "─",
+    top_left: "╭",
+    top_right: "╮",
+    bottom_left: "╰",
+    bottom_right: "╯",
+};
+
+const SHARP_BORDER_CHARS: BorderChars = BorderChars {
+    top: "─",
+    left: "│",
+    right: "│",
+    bottom: "─",
+    top_left: "┌",
+    top_right: "┐",
+    bottom_left: "└",
+    bottom_right: "┘",
+};
+
+pub enum BorderStyle {
+    Block,
+    Rounded,
+    Sharp,
+}
+
+impl BorderStyle {
+    pub fn chars(&self) -> &BorderChars {
+        match self {
+            BorderStyle::Block => &BLOCK_BORDER_CHARS,
+            BorderStyle::Rounded => &ROUNDED_BORDER_CHARS,
+            BorderStyle::Sharp => &SHARP_BORDER_CHARS,
+        }
+    }
+}
 
 #[derive(Debug)]
 pub enum DrawError {
@@ -38,7 +95,9 @@ pub struct BoxOptions {
 
     pub position: common::Vec2<i16>,
     pub size: common::Vec2,
+
     pub border_options: BorderFlags,
+    pub border_style: BorderStyle,
 
     pub background_color: Option<common::Color>,
     pub border_color: Option<common::Color>,
@@ -112,16 +171,18 @@ fn make_border(
 
 fn add_background_color(
     border: &mut String,
+    border_style: &BorderStyle,
     position: &common::Vec2<i16>,
     background_color: &Option<common::Color>,
 ) {
     if let Some(bg_color) = background_color {
+        let border_width = border_style.chars().border_width();
         let bg_ansi = bg_color.bg();
-        border.insert_str((position.x >= 0) as usize * BORDER_WIDTH, &bg_ansi);
+        border.insert_str((position.x >= 0) as usize * border_width, &bg_ansi);
 
-        let ends_with_border = border.chars().last().unwrap().len_utf8() == BORDER_WIDTH;
+        let ends_with_border = border.chars().last().unwrap().len_utf8() == border_width;
         border.insert_str(
-            border.len() - (BORDER_WIDTH * ends_with_border as usize),
+            border.len() - (border_width * ends_with_border as usize),
             "\x1b[0m",
         );
     }
@@ -129,20 +190,20 @@ fn add_background_color(
 
 fn add_border_color(
     border: &mut String,
+    border_style: &BorderStyle,
     position: &common::Vec2<i16>,
     border_color: &Option<common::Color>,
 ) {
-    // add border color if specified
     if let Some(border_color) = border_color {
+        let border_width = border_style.chars().border_width();
         let border_ansi = border_color.fg();
         if position.x >= 0 {
             border.insert_str(0, &border_ansi);
-            border.insert_str(BORDER_WIDTH + border_ansi.len(), "\x1b[0m");
-            println!("\rborder (colored): {:?}", border);
+            border.insert_str(border_width + border_ansi.len(), "\x1b[0m");
         }
 
-        if border.chars().last().unwrap().len_utf8() == BORDER_WIDTH {
-            border.insert_str(border.len() - BORDER_WIDTH, &border_ansi);
+        if border.chars().last().unwrap().len_utf8() == border_width {
+            border.insert_str(border.len() - border_width, &border_ansi);
             border.insert_str(border.len(), "\x1b[0m");
         }
     }
@@ -161,14 +222,16 @@ pub fn draw_box(
     options: BoxOptions,
     crash: bool,
 ) -> Result<(), DrawError> {
+    let border_chars = options.border_style.chars();
+
     if options.position.y >= 0 {
         // Part 1: Top border
         let mut top_border = make_border(
             &options.border_options,
             BorderFlags::TOP,
-            TOP_LEFT,
-            TOP_RIGHT,
-            HORZ_BORDER,
+            border_chars.top_left,
+            border_chars.top_right,
+            border_chars.top,
             options.size.x.saturating_sub(2),
         )
         .chars()
@@ -199,9 +262,9 @@ pub fn draw_box(
         let mut bottom_border = make_border(
             &options.border_options,
             BorderFlags::BOTTOM,
-            BOTTOM_LEFT,
-            BOTTOM_RIGHT,
-            HORZ_BORDER,
+            border_chars.bottom_left,
+            border_chars.bottom_right,
+            border_chars.bottom,
             options.size.x.saturating_sub(2),
         )
         .chars()
@@ -233,8 +296,8 @@ pub fn draw_box(
     let mut middle_border = make_border(
         &options.border_options,
         BorderFlags::LEFT | BorderFlags::RIGHT,
-        VERT_BORDER,
-        VERT_BORDER,
+        border_chars.left,
+        border_chars.right,
         " ",
         options.size.x.saturating_sub(2),
     )
@@ -251,13 +314,17 @@ pub fn draw_box(
 
     add_background_color(
         &mut middle_border,
+        &options.border_style,
         &options.position,
         &options.background_color,
     );
 
-    add_border_color(&mut middle_border, &options.position, &options.border_color);
-
-    println!("\rborder: {:?}", middle_border);
+    add_border_color(
+        &mut middle_border,
+        &options.border_style,
+        &options.position,
+        &options.border_color,
+    );
 
     for i in 1..options.size.y.saturating_sub(1) {
         let middle_index = options.position.y + (i as i16);
