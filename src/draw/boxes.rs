@@ -24,19 +24,19 @@ pub struct BoxOptions {
     pub text_color: Option<common::Color>,
 }
 
-struct BorderChar {
+struct BoxChar {
     prefix: String,
     content: String,
     suffix: String,
 }
 
-impl BorderChar {
+impl BoxChar {
     pub fn to_string(&self) -> String {
         format!("{}{}{}", self.prefix, self.content, self.suffix)
     }
 }
 
-fn compile_border_string(border_chars: &Vec<&mut BorderChar>) -> String {
+fn compile_border_string(border_chars: &Vec<&mut BoxChar>) -> String {
     let mut border_string = String::new();
     for border_char in border_chars.iter() {
         border_string.push_str(&border_char.to_string());
@@ -80,7 +80,7 @@ fn make_border(
     right: &str,
     middle: &str,
     width: usize,
-) -> Vec<BorderChar> {
+) -> Vec<BoxChar> {
     let mut border_str = Vec::new();
 
     let left_char = if ((location.contains(BorderFlags::TOP)
@@ -92,14 +92,14 @@ fn make_border(
     } else {
         " "
     };
-    border_str.push(BorderChar {
+    border_str.push(BoxChar {
         prefix: String::new(),
         content: left_char.to_string(),
         suffix: String::new(),
     });
 
     for _ in 0..width {
-        border_str.push(BorderChar {
+        border_str.push(BoxChar {
             prefix: String::new(),
             content: middle.to_string(),
             suffix: String::new(),
@@ -116,7 +116,7 @@ fn make_border(
         " "
     };
 
-    border_str.push(BorderChar {
+    border_str.push(BoxChar {
         prefix: String::new(),
         content: right_char.to_string(),
         suffix: String::new(),
@@ -126,7 +126,7 @@ fn make_border(
 }
 
 fn add_background_color(
-    border: &mut Vec<&mut BorderChar>,
+    border: &mut Vec<&mut BoxChar>,
     border_style: &border::BorderStyle,
     // position: &common::Vec2<i16>,
     background_color: &Option<common::Color>,
@@ -166,7 +166,7 @@ fn add_background_color(
 }
 
 fn add_border_color(
-    border: &mut Vec<&mut BorderChar>,
+    border: &mut Vec<&mut BoxChar>,
     position: &common::Vec2<i16>,
     border_color: &Option<common::Color>,
 ) {
@@ -186,7 +186,7 @@ fn add_border_color(
     }
 }
 
-fn add_edge_border_color(border: &mut Vec<&mut BorderChar>, border_color: &Option<common::Color>) {
+fn add_edge_border_color(border: &mut Vec<&mut BoxChar>, border_color: &Option<common::Color>) {
     if let Some(border_color) = border_color {
         let border_ansi = border_color.fg();
         if let Some(first) = border.first_mut() {
@@ -195,6 +195,35 @@ fn add_edge_border_color(border: &mut Vec<&mut BorderChar>, border_color: &Optio
 
         if let Some(last) = border.last_mut() {
             last.suffix.insert_str(0, "\x1b[0m");
+        }
+    }
+}
+
+fn add_text_color(
+    border: &mut Vec<&mut BoxChar>,
+    border_style: &border::BorderStyle,
+    text_color: &Option<common::Color>,
+) {
+    if let Some(text_color) = text_color {
+        let border_width = border_style.chars().border_width();
+        let text_ansi = text_color.fg();
+
+        let mut start_index = 0;
+        if border.first().unwrap().content.len() == border_width {
+            start_index = 1;
+        }
+
+        let mut last_index = border.len() - 1;
+        if border.last().unwrap().content.len() == border_width {
+            last_index -= 1;
+        }
+
+        for char in border
+            .iter_mut()
+            .skip(start_index)
+            .take(last_index - start_index + 1)
+        {
+            char.prefix.insert_str(0, &text_ansi);
         }
     }
 }
@@ -293,7 +322,7 @@ pub fn draw_box(
         BorderFlags::LEFT | BorderFlags::RIGHT,
         border_chars.left,
         border_chars.right,
-        " ",
+        "a",
         options.size.x.saturating_sub(2),
     );
 
@@ -317,6 +346,11 @@ pub fn draw_box(
     );
 
     add_border_color(&mut middle_border, &options.position, &options.border_color);
+    add_text_color(
+        &mut middle_border,
+        &options.border_style,
+        &options.text_color,
+    );
 
     for i in 1..options.size.y.saturating_sub(1) {
         let middle_index = options.position.y + (i as i16);
