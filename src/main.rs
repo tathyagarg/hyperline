@@ -26,10 +26,7 @@ fn main() {
             position: common::Vec2::new(0, 0),
             size: common::Vec2::new(size.0 as usize, size.1 as usize),
 
-            border_options: BorderFlags::RIGHT
-                | BorderFlags::TOP
-                | BorderFlags::LEFT
-                | BorderFlags::BOTTOM,
+            border_options: BorderFlags::LEFT | BorderFlags::BOTTOM,
             border_style: draw::border::BorderStyle::Rounded,
 
             border_color: Some(common::Color::RED),

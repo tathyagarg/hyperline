@@ -209,8 +209,8 @@ fn draw_edge(buffer: &mut Vec<String>, options: &BoxOptions, flags: BorderFlags,
 
     let suffix = buffer[index].get(prefix.len() + edge.len()..).unwrap_or("");
 
-    if options.border_options.contains(BorderFlags::LEFT)
-        || options.border_options.contains(BorderFlags::RIGHT)
+    if options.border_options.contains(BorderFlags::TOP)
+        || options.border_options.contains(BorderFlags::BOTTOM)
     {
         add_edge_border_color(&mut edge, &options.border_color);
     }
