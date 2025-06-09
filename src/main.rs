@@ -6,6 +6,7 @@ use termion::raw::IntoRawMode;
 
 mod common;
 mod draw;
+use draw::border::BorderFlags;
 
 fn main() {
     let mut stdout = stdout().into_raw_mode().unwrap();
@@ -25,7 +26,7 @@ fn main() {
             position: common::Vec2::new(0, 0),
             size: common::Vec2::new(size.0 as usize, size.1 as usize),
 
-            border_options: draw::border::BorderFlags::ALL,
+            border_options: BorderFlags::ALL,
             border_style: draw::border::BorderStyle::Rounded,
 
             border_color: Some(common::Color::RED),

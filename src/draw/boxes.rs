@@ -1,8 +1,8 @@
 use std::cmp;
 
-use crate::draw::border;
+use crate::common;
 use crate::draw::border::BorderFlags;
-use crate::{common, draw};
+use crate::draw::border::{self, determine_edge};
 
 #[derive(Debug)]
 pub enum DrawError {
@@ -48,28 +48,12 @@ fn compile_border_string(border_chars: &Vec<&mut BoxChar>) -> String {
     border_string
 }
 
-fn make_border(
-    border: &BorderFlags,
-    location: &BorderFlags,
-    left: &str,
-    right: &str,
-    middle: &str,
-    width: usize,
-) -> Vec<BoxChar> {
+fn make_border(left: &str, middle: &str, right: &str, width: usize) -> Vec<BoxChar> {
     let mut border_str = Vec::new();
 
-    let left_char = if ((location.contains(BorderFlags::TOP)
-        || location.contains(BorderFlags::BOTTOM))
-        && border.contains(BorderFlags::PRESERVE_CORNERS))
-        || border.contains(BorderFlags::LEFT)
-    {
-        left
-    } else {
-        " "
-    };
     border_str.push(BoxChar {
         prefix: String::new(),
-        content: left_char.to_string(),
+        content: left.to_string(),
         suffix: String::new(),
     });
 
@@ -81,19 +65,9 @@ fn make_border(
         });
     }
 
-    let right_char = if ((location.contains(BorderFlags::TOP)
-        || location.contains(BorderFlags::BOTTOM))
-        && border.contains(BorderFlags::PRESERVE_CORNERS))
-        || border.contains(BorderFlags::RIGHT)
-    {
-        right
-    } else {
-        " "
-    };
-
     border_str.push(BoxChar {
         prefix: String::new(),
-        content: right_char.to_string(),
+        content: right.to_string(),
         suffix: String::new(),
     });
 
@@ -201,34 +175,21 @@ fn add_text_color(
 }
 
 fn draw_edge(buffer: &mut Vec<String>, options: &BoxOptions, flags: BorderFlags, index: usize) {
-    let border_chars = options.border_style.chars();
-
-    let (left, middle, right) = if flags == BorderFlags::TOP
-        && options.border_options.contains(BorderFlags::TOP)
-    {
-        (
-            border_chars.top_left,
-            border_chars.top,
-            border_chars.top_right,
-        )
-    } else if flags == BorderFlags::BOTTOM && options.border_options.contains(BorderFlags::BOTTOM) {
-        (
-            border_chars.bottom_left,
-            border_chars.bottom,
-            border_chars.bottom_right,
-        )
-    } else {
-        (border_chars.left, " ", border_chars.right)
-    };
-
-    let mut edge_data = make_border(
-        &options.border_options,
-        &flags,
-        left,
-        right,
-        middle,
-        options.size.x.saturating_sub(2),
+    let (left, middle, right) = (
+        determine_edge(
+            &options.border_options,
+            &options.border_style,
+            flags | BorderFlags::LEFT,
+        ),
+        determine_edge(&options.border_options, &options.border_style, flags),
+        determine_edge(
+            &options.border_options,
+            &options.border_style,
+            flags | BorderFlags::RIGHT,
+        ),
     );
+
+    let mut edge_data = make_border(left, middle, right, options.size.x.saturating_sub(2));
 
     let mut edge = edge_data
         .iter_mut()
@@ -248,14 +209,29 @@ fn draw_edge(buffer: &mut Vec<String>, options: &BoxOptions, flags: BorderFlags,
 
     let suffix = buffer[index].get(prefix.len() + edge.len()..).unwrap_or("");
 
-    if options.border_options.contains(flags) {
+    if options.border_options.contains(BorderFlags::LEFT)
+        || options.border_options.contains(BorderFlags::RIGHT)
+    {
         add_edge_border_color(&mut edge, &options.border_color);
-    } else {
-        add_background_color(&mut edge, &options.border_style, &options.background_color);
-        // panic!("Edge: {:?}", edge);
     }
 
+    if !((flags == BorderFlags::TOP && options.border_options.contains(BorderFlags::TOP))
+        || (flags == BorderFlags::BOTTOM && options.border_options.contains(BorderFlags::BOTTOM)))
+    {
+        add_background_color(&mut edge, &options.border_style, &options.background_color);
+    }
+    // if (options.border_options.contains(BorderFlags::TOP) && flags != BorderFlags::TOP)
+    //     || (options.border_options.contains(BorderFlags::BOTTOM) && flags != BorderFlags::BOTTOM)
+    // {
+    //     panic!(
+    //         "Border options: {:?} do not match flags: {:?}",
+    //         options.border_options, flags
+    //     );
+    //     add_background_color(&mut edge, &options.border_style, &options.background_color);
+    // }
+
     let compiled = compile_border_string(&edge);
+
     buffer[index] = format!("{}{}{}", prefix, compiled, suffix);
 }
 
@@ -264,8 +240,6 @@ pub fn draw_box(
     options: BoxOptions,
     crash: bool,
 ) -> Result<(), DrawError> {
-    let border_chars = options.border_style.chars();
-
     if options.position.y >= 0 {
         let top_index = cmp::max(options.position.y, 0) as usize;
 
@@ -280,11 +254,17 @@ pub fn draw_box(
 
     // Part 3: Middle border
     let mut middle_border_data = make_border(
-        &options.border_options,
-        &(BorderFlags::LEFT | BorderFlags::RIGHT),
-        border_chars.left,
-        border_chars.right,
+        determine_edge(
+            &options.border_options,
+            &options.border_style,
+            BorderFlags::LEFT,
+        ),
         " ",
+        determine_edge(
+            &options.border_options,
+            &options.border_style,
+            BorderFlags::RIGHT,
+        ),
         options.size.x.saturating_sub(2),
     );
 

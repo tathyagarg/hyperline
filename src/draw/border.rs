@@ -106,7 +106,7 @@ impl BorderStyle {
 }
 
 bitflags! {
-    #[derive(Eq, PartialEq, Clone, Copy)]
+    #[derive(Eq, PartialEq, Clone, Copy, Debug)]
     pub struct BorderFlags: u8 {
         const NONE = 0b0000_0000;
         const TOP = 0b0000_0001;
@@ -117,5 +117,114 @@ bitflags! {
         const PRESERVE_CORNERS = 0b0001_0000;
 
         const ALL = Self::TOP.bits() | Self::BOTTOM.bits() | Self::LEFT.bits() | Self::RIGHT.bits() | Self::PRESERVE_CORNERS.bits();
+    }
+}
+
+pub fn determine_edge(
+    flags: &BorderFlags,
+    style: &BorderStyle,
+    position: BorderFlags,
+) -> &'static str {
+    let chars = style.chars();
+
+    match (
+        position.contains(BorderFlags::TOP),
+        position.contains(BorderFlags::BOTTOM),
+        position.contains(BorderFlags::LEFT),
+        position.contains(BorderFlags::RIGHT),
+    ) {
+        (true, _, true, _) => {
+            if flags.contains(BorderFlags::TOP | BorderFlags::LEFT)
+                || (flags.contains(BorderFlags::PRESERVE_CORNERS)
+                    && (flags.contains(BorderFlags::TOP) || flags.contains(BorderFlags::LEFT)))
+            {
+                chars.top_left
+            } else if flags.contains(BorderFlags::TOP) {
+                chars.top
+            } else if flags.contains(BorderFlags::LEFT) {
+                chars.left
+            } else {
+                " "
+            }
+        }
+
+        (true, _, _, true) => {
+            if flags.contains(BorderFlags::TOP | BorderFlags::RIGHT)
+                || (flags.contains(BorderFlags::PRESERVE_CORNERS)
+                    && (flags.contains(BorderFlags::TOP) || flags.contains(BorderFlags::RIGHT)))
+            {
+                chars.top_right
+            } else if flags.contains(BorderFlags::TOP) {
+                chars.top
+            } else if flags.contains(BorderFlags::RIGHT) {
+                chars.right
+            } else {
+                " "
+            }
+        }
+
+        (_, true, true, _) => {
+            if flags.contains(BorderFlags::BOTTOM | BorderFlags::LEFT)
+                || (flags.contains(BorderFlags::PRESERVE_CORNERS)
+                    && (flags.contains(BorderFlags::BOTTOM) || flags.contains(BorderFlags::LEFT)))
+            {
+                chars.bottom_left
+            } else if flags.contains(BorderFlags::BOTTOM) {
+                chars.bottom
+            } else if flags.contains(BorderFlags::LEFT) {
+                chars.left
+            } else {
+                " "
+            }
+        }
+
+        (_, true, _, true) => {
+            if flags.contains(BorderFlags::BOTTOM | BorderFlags::RIGHT)
+                || (flags.contains(BorderFlags::PRESERVE_CORNERS)
+                    && (flags.contains(BorderFlags::BOTTOM) || flags.contains(BorderFlags::RIGHT)))
+            {
+                chars.bottom_right
+            } else if flags.contains(BorderFlags::BOTTOM) {
+                chars.bottom
+            } else if flags.contains(BorderFlags::RIGHT) {
+                chars.right
+            } else {
+                " "
+            }
+        }
+
+        (true, _, _, _) => {
+            if flags.contains(BorderFlags::TOP) {
+                chars.top
+            } else {
+                " "
+            }
+        }
+
+        (_, true, _, _) => {
+            if flags.contains(BorderFlags::BOTTOM) {
+                chars.bottom
+            } else {
+                " "
+            }
+        }
+
+        (_, _, true, _) => {
+            if flags.contains(BorderFlags::LEFT) {
+                chars.left
+            } else {
+                " "
+            }
+        }
+
+        (_, _, _, true) => {
+            if flags.contains(BorderFlags::RIGHT) {
+                chars.right
+            } else {
+                " "
+            }
+        }
+
+        _ => " ",
     }
 }
