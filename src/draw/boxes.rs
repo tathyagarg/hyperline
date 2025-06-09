@@ -220,15 +220,6 @@ fn draw_edge(buffer: &mut Vec<String>, options: &BoxOptions, flags: BorderFlags,
     {
         add_background_color(&mut edge, &options.border_style, &options.background_color);
     }
-    // if (options.border_options.contains(BorderFlags::TOP) && flags != BorderFlags::TOP)
-    //     || (options.border_options.contains(BorderFlags::BOTTOM) && flags != BorderFlags::BOTTOM)
-    // {
-    //     panic!(
-    //         "Border options: {:?} do not match flags: {:?}",
-    //         options.border_options, flags
-    //     );
-    //     add_background_color(&mut edge, &options.border_style, &options.background_color);
-    // }
 
     let compiled = compile_border_string(&edge);
 
@@ -240,15 +231,21 @@ pub fn draw_box(
     options: BoxOptions,
     crash: bool,
 ) -> Result<(), DrawError> {
-    if options.position.y >= 0 {
-        let top_index = cmp::max(options.position.y, 0) as usize;
-
-        draw_edge(buffer, &options, BorderFlags::TOP, top_index);
+    if options.position.y >= 0 && options.border_options.contains(BorderFlags::TOP) {
+        draw_edge(
+            buffer,
+            &options,
+            BorderFlags::TOP,
+            cmp::max(options.position.y, 0) as usize,
+        );
     }
 
     // Part 2: Bottom border
     let bottom_index = options.position.y + (options.size.y as i16) - 1;
-    if bottom_index >= 0 && bottom_index < (buffer.len() as i16) {
+    if bottom_index >= 0
+        && bottom_index < (buffer.len() as i16)
+        && options.border_options.contains(BorderFlags::BOTTOM)
+    {
         draw_edge(buffer, &options, BorderFlags::BOTTOM, bottom_index as usize);
     }
 
@@ -286,8 +283,6 @@ pub fn draw_box(
         &options.background_color,
     );
 
-    //add_border_color(&mut middle_border, &options.position, &options.border_color);
-
     if options.border_options.contains(BorderFlags::LEFT) {
         add_left_border_color(&mut middle_border, &options.border_color);
     }
@@ -302,7 +297,15 @@ pub fn draw_box(
         &options.text_color,
     );
 
-    for i in 1..options.size.y.saturating_sub(1) {
+    for i in 0..options.size.y {
+        if i == 0 && options.border_options.contains(BorderFlags::TOP) {
+            continue;
+        }
+
+        if i == options.size.y - 1 && options.border_options.contains(BorderFlags::BOTTOM) {
+            continue;
+        }
+
         let middle_index = options.position.y + (i as i16);
         if middle_index >= 0 && middle_index < (buffer.len() as i16) {
             let mut this_line = middle_border
@@ -310,7 +313,6 @@ pub fn draw_box(
                 .map(|c| (*c).clone())
                 .collect::<Vec<_>>();
 
-            // convert this line to mutable references
             let mut this_line: Vec<&mut BoxChar> = this_line.iter_mut().collect();
 
             let middle_prefix = buffer[middle_index as usize]
@@ -321,15 +323,26 @@ pub fn draw_box(
                 .get(middle_prefix.len() + middle_border.len()..)
                 .unwrap_or("");
 
-            if options.content.is_some() && options.content.as_ref().unwrap().len() > i - 1 {
-                let content = options.content.as_ref().unwrap().get(i - 1).unwrap();
+            if options.content.is_some()
+                && options.content.as_ref().unwrap().len()
+                    > i - (options.border_options.contains(BorderFlags::TOP) as usize)
+            {
+                let content = options
+                    .content
+                    .as_ref()
+                    .unwrap()
+                    .get(i - (options.border_options.contains(BorderFlags::TOP) as usize))
+                    .unwrap();
 
                 for (j, char) in content
                     .chars()
                     .skip(cmp::max(0, -options.position.x - 1) as usize)
                     .enumerate()
                 {
-                    this_line[j + (options.position.x >= 0) as usize].content = char.to_string();
+                    this_line[j
+                        + (options.position.x > 0) as usize
+                        + (options.border_options.contains(BorderFlags::LEFT)) as usize]
+                        .content = char.to_string();
                 }
             }
 
@@ -339,6 +352,13 @@ pub fn draw_box(
                 compile_border_string(&this_line),
                 middle_suffix
             );
+
+            // if i == 0 {
+            //     panic!(
+            //         "buffer[{}] = '{}'",
+            //         middle_index as usize, buffer[middle_index as usize]
+            //     );
+            // }
         }
     }
 
