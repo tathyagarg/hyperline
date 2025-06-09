@@ -1,14 +1,13 @@
 use std::cmp;
-use std::rc::Rc;
 
-use crate::common;
 use crate::draw::border;
 use crate::draw::border::BorderFlags;
+use crate::{common, draw};
 
 #[derive(Debug)]
 pub enum DrawError {
     HeightTooSmall,
-    ContentTooLong,
+    // ContentTooLong,
 }
 
 pub struct BoxOptions {
@@ -45,12 +44,13 @@ fn compile_border_string(border_chars: &Vec<&mut BoxChar>) -> String {
     for border_char in border_chars.iter() {
         border_string.push_str(&border_char.to_string());
     }
+
     border_string
 }
 
 fn make_border(
     border: &BorderFlags,
-    location: BorderFlags,
+    location: &BorderFlags,
     left: &str,
     right: &str,
     middle: &str,
@@ -103,7 +103,6 @@ fn make_border(
 fn add_background_color(
     border: &mut Vec<&mut BoxChar>,
     border_style: &border::BorderStyle,
-    // position: &common::Vec2<i16>,
     background_color: &Option<common::Color>,
 ) {
     if let Some(bg_color) = background_color {
@@ -111,7 +110,6 @@ fn add_background_color(
         let bg_ansi = bg_color.bg();
 
         if border.first_mut().unwrap().content.len() == border_width {
-            // second mut
             if let Some(character) = border.get_mut(1) {
                 character.prefix.insert_str(0, &bg_ansi);
             }
@@ -140,20 +138,19 @@ fn add_background_color(
     }
 }
 
-fn add_border_color(
-    border: &mut Vec<&mut BoxChar>,
-    position: &common::Vec2<i16>,
-    border_color: &Option<common::Color>,
-) {
+fn add_left_border_color(border: &mut Vec<&mut BoxChar>, border_color: &Option<common::Color>) {
     if let Some(border_color) = border_color {
         let border_ansi = border_color.fg();
-        if position.x >= 0 {
-            if let Some(first) = border.first_mut() {
-                first.prefix.insert_str(0, &border_ansi);
-                first.suffix.insert_str(0, "\x1b[0m");
-            }
+        if let Some(first) = border.first_mut() {
+            first.prefix.insert_str(0, &border_ansi);
+            first.suffix.insert_str(0, "\x1b[0m");
         }
+    }
+}
 
+fn add_right_border_color(border: &mut Vec<&mut BoxChar>, border_color: &Option<common::Color>) {
+    if let Some(border_color) = border_color {
+        let border_ansi = border_color.fg();
         if let Some(last) = border.last_mut() {
             last.prefix.insert_str(0, &border_ansi);
             last.suffix.insert_str(0, "\x1b[0m");
@@ -203,6 +200,65 @@ fn add_text_color(
     }
 }
 
+fn draw_edge(buffer: &mut Vec<String>, options: &BoxOptions, flags: BorderFlags, index: usize) {
+    let border_chars = options.border_style.chars();
+
+    let (left, middle, right) = if flags == BorderFlags::TOP
+        && options.border_options.contains(BorderFlags::TOP)
+    {
+        (
+            border_chars.top_left,
+            border_chars.top,
+            border_chars.top_right,
+        )
+    } else if flags == BorderFlags::BOTTOM && options.border_options.contains(BorderFlags::BOTTOM) {
+        (
+            border_chars.bottom_left,
+            border_chars.bottom,
+            border_chars.bottom_right,
+        )
+    } else {
+        (border_chars.left, " ", border_chars.right)
+    };
+
+    let mut edge_data = make_border(
+        &options.border_options,
+        &flags,
+        left,
+        right,
+        middle,
+        options.size.x.saturating_sub(2),
+    );
+
+    let mut edge = edge_data
+        .iter_mut()
+        .skip(cmp::max(0, -options.position.x) as usize)
+        .take(cmp::min(
+            options.screen_size.x,
+            cmp::min(
+                options.size.x,
+                (options.screen_size.x as i16 - options.position.x) as usize,
+            ),
+        ))
+        .collect::<Vec<_>>();
+
+    let prefix = buffer[index]
+        .get(..cmp::max(options.position.x, 0) as usize)
+        .unwrap_or("");
+
+    let suffix = buffer[index].get(prefix.len() + edge.len()..).unwrap_or("");
+
+    if options.border_options.contains(flags) {
+        add_edge_border_color(&mut edge, &options.border_color);
+    } else {
+        add_background_color(&mut edge, &options.border_style, &options.background_color);
+        // panic!("Edge: {:?}", edge);
+    }
+
+    let compiled = compile_border_string(&edge);
+    buffer[index] = format!("{}{}{}", prefix, compiled, suffix);
+}
+
 pub fn draw_box(
     buffer: &mut Vec<String>,
     options: BoxOptions,
@@ -211,94 +267,21 @@ pub fn draw_box(
     let border_chars = options.border_style.chars();
 
     if options.position.y >= 0 {
-        // Part 1: Top border
-        let mut top_border_data = make_border(
-            &options.border_options,
-            BorderFlags::TOP,
-            border_chars.top_left,
-            border_chars.top_right,
-            border_chars.top,
-            options.size.x.saturating_sub(2),
-        );
-
-        let mut top_border = top_border_data
-            .iter_mut()
-            .skip(cmp::max(0, -options.position.x) as usize)
-            .take(cmp::min(
-                options.screen_size.x,
-                cmp::min(
-                    options.size.x,
-                    (options.screen_size.x as i16 - options.position.x) as usize,
-                ),
-            ))
-            .collect::<Vec<_>>();
-
         let top_index = cmp::max(options.position.y, 0) as usize;
 
-        let top_prefix = buffer[top_index]
-            .get(..cmp::max(options.position.x, 0) as usize)
-            .unwrap_or("");
-
-        let top_suffix = &buffer[top_index]
-            .get(top_prefix.len() + top_border.len()..)
-            .unwrap_or("");
-
-        add_edge_border_color(&mut top_border, &options.border_color);
-
-        buffer[top_index] = format!(
-            "{}{}{}",
-            top_prefix,
-            compile_border_string(&top_border),
-            top_suffix
-        );
+        draw_edge(buffer, &options, BorderFlags::TOP, top_index);
     }
 
     // Part 2: Bottom border
     let bottom_index = options.position.y + (options.size.y as i16) - 1;
     if bottom_index >= 0 && bottom_index < (buffer.len() as i16) {
-        let mut bottom_border_data = make_border(
-            &options.border_options,
-            BorderFlags::BOTTOM,
-            border_chars.bottom_left,
-            border_chars.bottom_right,
-            border_chars.bottom,
-            options.size.x.saturating_sub(2),
-        );
-
-        let mut bottom_border = bottom_border_data
-            .iter_mut()
-            .skip(cmp::max(0, -options.position.x) as usize)
-            .take(cmp::min(
-                options.screen_size.x,
-                cmp::min(
-                    options.size.x,
-                    (options.screen_size.x as i16 - options.position.x) as usize,
-                ),
-            ))
-            .collect::<Vec<_>>();
-
-        let bottom_prefix = buffer[bottom_index as usize]
-            .get(..cmp::max(options.position.x, 0) as usize)
-            .unwrap_or("");
-
-        let bottom_suffix = &buffer[bottom_index as usize]
-            .get(bottom_prefix.len() + bottom_border.len()..)
-            .unwrap_or("");
-
-        add_edge_border_color(&mut bottom_border, &options.border_color);
-
-        buffer[bottom_index as usize] = format!(
-            "{}{}{}",
-            bottom_prefix,
-            compile_border_string(&bottom_border),
-            bottom_suffix
-        );
+        draw_edge(buffer, &options, BorderFlags::BOTTOM, bottom_index as usize);
     }
 
     // Part 3: Middle border
     let mut middle_border_data = make_border(
         &options.border_options,
-        BorderFlags::LEFT | BorderFlags::RIGHT,
+        &(BorderFlags::LEFT | BorderFlags::RIGHT),
         border_chars.left,
         border_chars.right,
         " ",
@@ -320,11 +303,19 @@ pub fn draw_box(
     add_background_color(
         &mut middle_border,
         &options.border_style,
-        // &options.position,
         &options.background_color,
     );
 
-    add_border_color(&mut middle_border, &options.position, &options.border_color);
+    //add_border_color(&mut middle_border, &options.position, &options.border_color);
+
+    if options.border_options.contains(BorderFlags::LEFT) {
+        add_left_border_color(&mut middle_border, &options.border_color);
+    }
+
+    if options.border_options.contains(BorderFlags::RIGHT) {
+        add_right_border_color(&mut middle_border, &options.border_color);
+    }
+
     add_text_color(
         &mut middle_border,
         &options.border_style,

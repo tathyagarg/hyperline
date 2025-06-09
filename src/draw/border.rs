@@ -106,6 +106,7 @@ impl BorderStyle {
 }
 
 bitflags! {
+    #[derive(Eq, PartialEq, Clone, Copy)]
     pub struct BorderFlags: u8 {
         const NONE = 0b0000_0000;
         const TOP = 0b0000_0001;
