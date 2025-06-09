@@ -203,9 +203,28 @@ fn draw_edge(buffer: &mut Vec<String>, options: &BoxOptions, flags: BorderFlags,
         ))
         .collect::<Vec<_>>();
 
-    let prefix = buffer[index]
-        .get(..cmp::max(options.position.x, 0) as usize)
-        .unwrap_or("");
+    // let prefix = buffer[index]
+    //     .chars()
+    //     .take(cmp::min(
+    //         cmp::max(options.position.x, 0) as usize,
+    //         buffer[index].len(),
+    //     ))
+    //     .collect::<String>();
+
+    let prefix = common::take_visible_chars(
+        &buffer[index],
+        cmp::min(
+            cmp::max(options.position.x, 0) as usize,
+            buffer[index].len(),
+        ),
+    );
+
+    // if options.position.x == 20 {
+    //     panic!(
+    //         "prefix: '{}', edge: '{:?}', buffer: {:?}, index: {}",
+    //         prefix, edge, buffer, index
+    //     );
+    // }
 
     let suffix = buffer[index].get(prefix.len() + edge.len()..).unwrap_or("");
 
@@ -283,11 +302,13 @@ pub fn draw_box(
         &options.background_color,
     );
 
-    if options.border_options.contains(BorderFlags::LEFT) {
+    if options.border_options.contains(BorderFlags::LEFT) && options.position.x >= 0 {
         add_left_border_color(&mut middle_border, &options.border_color);
     }
 
-    if options.border_options.contains(BorderFlags::RIGHT) {
+    if options.border_options.contains(BorderFlags::RIGHT)
+        && options.position.x + options.size.x as i16 > 0
+    {
         add_right_border_color(&mut middle_border, &options.border_color);
     }
 
@@ -315,9 +336,10 @@ pub fn draw_box(
 
             let mut this_line: Vec<&mut BoxChar> = this_line.iter_mut().collect();
 
-            let middle_prefix = buffer[middle_index as usize]
-                .get(..cmp::max(options.position.x, 0) as usize)
-                .unwrap_or("");
+            let middle_prefix = common::take_visible_chars(
+                &buffer[middle_index as usize],
+                cmp::max(options.position.x, 0) as usize,
+            );
 
             let middle_suffix = &buffer[middle_index as usize]
                 .get(middle_prefix.len() + middle_border.len()..)
@@ -339,10 +361,18 @@ pub fn draw_box(
                     .skip(cmp::max(0, -options.position.x - 1) as usize)
                     .enumerate()
                 {
-                    this_line[j
-                        + (options.position.x > 0) as usize
-                        + (options.border_options.contains(BorderFlags::LEFT)) as usize]
-                        .content = char.to_string();
+                    let index = j
+                        // + (options.position.x > 0) as usize
+                        + (options.border_options.contains(BorderFlags::LEFT) && options.position.x > 0) as usize;
+
+                    if index
+                        >= this_line.len()
+                            - (options.border_options.contains(BorderFlags::RIGHT) as usize)
+                    {
+                        continue;
+                    } else {
+                        this_line[index].content = char.to_string();
+                    }
                 }
             }
 
@@ -353,10 +383,10 @@ pub fn draw_box(
                 middle_suffix
             );
 
-            // if i == 0 {
+            // if options.position.x == 20 {
             //     panic!(
-            //         "buffer[{}] = '{}'",
-            //         middle_index as usize, buffer[middle_index as usize]
+            //         "\rmiddle_prefix: '{}',\r\nline: {:?},\r\nindex: {}",
+            //         middle_prefix, this_line, middle_index
             //     );
             // }
         }

@@ -116,6 +116,9 @@ bitflags! {
 
         const PRESERVE_CORNERS = 0b0001_0000;
 
+        const HORIZONTAL = Self::TOP.bits() | Self::BOTTOM.bits();
+        const VERTICAL = Self::LEFT.bits() | Self::RIGHT.bits();
+
         const ALL = Self::TOP.bits() | Self::BOTTOM.bits() | Self::LEFT.bits() | Self::RIGHT.bits() | Self::PRESERVE_CORNERS.bits();
     }
 }

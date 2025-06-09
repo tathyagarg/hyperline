@@ -23,10 +23,13 @@ fn main() {
         draw::boxes::BoxOptions {
             screen_size: common::Vec2::new(size.0 as usize, size.1 as usize),
 
-            position: common::Vec2::new(0, 0),
-            size: common::Vec2::new(size.0 as usize, size.1 as usize),
+            position: common::Vec2::new(-2, 0),
+            size: common::Vec2::new(10, size.1 as usize),
 
-            border_options: BorderFlags::LEFT | BorderFlags::BOTTOM,
+            border_options: BorderFlags::TOP
+                | BorderFlags::RIGHT
+                | BorderFlags::BOTTOM
+                | BorderFlags::LEFT,
             border_style: draw::border::BorderStyle::Rounded,
 
             border_color: Some(common::Color::RED),
@@ -35,6 +38,33 @@ fn main() {
 
             content: Some(vec![
                 "Hello, World!".to_string(),
+                "Press 'q' to exit.".to_string(),
+            ]),
+        },
+        false,
+    )
+    .unwrap();
+
+    draw::boxes::draw_box(
+        &mut buffer,
+        draw::boxes::BoxOptions {
+            screen_size: common::Vec2::new(size.0 as usize, size.1 as usize),
+
+            position: common::Vec2::new(20, 0),
+            size: common::Vec2::new(20, 10 as usize),
+
+            border_options: BorderFlags::TOP
+                | BorderFlags::RIGHT
+                | BorderFlags::BOTTOM
+                | BorderFlags::LEFT,
+            border_style: draw::border::BorderStyle::Double,
+
+            border_color: Some(common::Color::GREEN),
+            background_color: Some(common::Color::BLACK),
+            text_color: Some(common::Color::YELLOW),
+
+            content: Some(vec![
+                "This is a double border box.".to_string(),
                 "Press 'q' to exit.".to_string(),
             ]),
         },
