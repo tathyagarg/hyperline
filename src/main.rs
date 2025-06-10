@@ -50,7 +50,7 @@ fn main() {
         draw::boxes::BoxOptions {
             screen_size: common::Vec2::new(size.0 as usize, size.1 as usize),
 
-            position: common::Vec2::new(20, 0),
+            position: common::Vec2::new(size.0 as i16 - 18, 10),
             size: common::Vec2::new(20, 10 as usize),
 
             border_options: BorderFlags::TOP

@@ -307,7 +307,7 @@ pub fn draw_box(
     }
 
     if options.border_options.contains(BorderFlags::RIGHT)
-        && options.position.x + options.size.x as i16 > 0
+        && (options.position.x + options.size.x as i16) < (options.screen_size.x as i16)
     {
         add_right_border_color(&mut middle_border, &options.border_color);
     }
@@ -362,12 +362,15 @@ pub fn draw_box(
                     .enumerate()
                 {
                     let index = j
-                        // + (options.position.x > 0) as usize
-                        + (options.border_options.contains(BorderFlags::LEFT) && options.position.x > 0) as usize;
+                        + (options.border_options.contains(BorderFlags::LEFT)
+                            && options.position.x > 0) as usize;
 
                     if index
                         >= this_line.len()
-                            - (options.border_options.contains(BorderFlags::RIGHT) as usize)
+                            - (options.border_options.contains(BorderFlags::RIGHT)
+                                && (options.position.x + options.size.x as i16)
+                                    < (options.screen_size.x as i16))
+                                as usize
                     {
                         continue;
                     } else {
