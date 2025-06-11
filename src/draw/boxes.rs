@@ -27,10 +27,20 @@ pub struct BoxOptions {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct BoxChar {
+pub struct BoxChar {
     prefix: String,
     content: String,
     suffix: String,
+}
+
+impl Default for BoxChar {
+    fn default() -> Self {
+        BoxChar {
+            prefix: String::new(),
+            content: String::from(" "),
+            suffix: String::new(),
+        }
+    }
 }
 
 impl BoxChar {
@@ -174,7 +184,12 @@ fn add_text_color(
     }
 }
 
-fn draw_edge(buffer: &mut Vec<String>, options: &BoxOptions, flags: BorderFlags, index: usize) {
+fn draw_edge(
+    buffer: &mut Vec<Vec<BoxChar>>,
+    options: &BoxOptions,
+    flags: BorderFlags,
+    index: usize,
+) {
     let (left, middle, right) = (
         determine_edge(
             &options.border_options,
@@ -203,30 +218,18 @@ fn draw_edge(buffer: &mut Vec<String>, options: &BoxOptions, flags: BorderFlags,
         ))
         .collect::<Vec<_>>();
 
-    // let prefix = buffer[index]
-    //     .chars()
-    //     .take(cmp::min(
-    //         cmp::max(options.position.x, 0) as usize,
-    //         buffer[index].len(),
-    //     ))
-    //     .collect::<String>();
+    let prefix = buffer[index]
+        .iter()
+        .take(cmp::max(options.position.x, 0) as usize)
+        .map(|c| c.clone())
+        .collect::<Vec<_>>();
 
-    let prefix = common::take_visible_chars(
-        &buffer[index],
-        cmp::min(
-            cmp::max(options.position.x, 0) as usize,
-            buffer[index].len(),
-        ),
-    );
-
-    // if options.position.x == 20 {
-    //     panic!(
-    //         "prefix: '{}', edge: '{:?}', buffer: {:?}, index: {}",
-    //         prefix, edge, buffer, index
-    //     );
-    // }
-
-    let suffix = buffer[index].get(prefix.len() + edge.len()..).unwrap_or("");
+    let suffix = buffer[index]
+        .get(prefix.len() + edge.len()..)
+        .unwrap_or(&vec![])
+        .iter()
+        .map(|c| c.clone())
+        .collect::<Vec<_>>();
 
     if options.border_options.contains(BorderFlags::TOP)
         || options.border_options.contains(BorderFlags::BOTTOM)
@@ -240,13 +243,16 @@ fn draw_edge(buffer: &mut Vec<String>, options: &BoxOptions, flags: BorderFlags,
         add_background_color(&mut edge, &options.border_style, &options.background_color);
     }
 
-    let compiled = compile_border_string(&edge);
+    let mut new_row = Vec::new();
+    new_row.extend(prefix);
+    new_row.extend(edge.into_iter().map(|c| c.clone()));
+    new_row.extend(suffix);
 
-    buffer[index] = format!("{}{}{}", prefix, compiled, suffix);
+    buffer[index] = new_row;
 }
 
 pub fn draw_box(
-    buffer: &mut Vec<String>,
+    buffer: &mut Vec<Vec<BoxChar>>,
     options: BoxOptions,
     crash: bool,
 ) -> Result<(), DrawError> {
@@ -334,16 +340,27 @@ pub fn draw_box(
                 .map(|c| (*c).clone())
                 .collect::<Vec<_>>();
 
-            let mut this_line: Vec<&mut BoxChar> = this_line.iter_mut().collect();
+            // let middle_prefix = common::take_visible_chars(
+            //     &buffer[middle_index as usize],
+            //     cmp::max(options.position.x, 0) as usize,
+            // );
 
-            let middle_prefix = common::take_visible_chars(
-                &buffer[middle_index as usize],
-                cmp::max(options.position.x, 0) as usize,
-            );
+            let middle_prefix = buffer[middle_index as usize]
+                .iter()
+                .take(cmp::max(options.position.x, 0) as usize)
+                .map(|c| c.clone())
+                .collect::<Vec<_>>();
 
-            let middle_suffix = &buffer[middle_index as usize]
-                .get(middle_prefix.len() + middle_border.len()..)
-                .unwrap_or("");
+            // let middle_suffix = &buffer[middle_index as usize]
+            //     .get(middle_prefix.len() + middle_border.len()..)
+            //     .unwrap_or("");
+
+            let middle_suffix = buffer[middle_index as usize]
+                .get(middle_prefix.len() + this_line.len()..)
+                .unwrap_or(&vec![])
+                .iter()
+                .map(|c| c.clone())
+                .collect::<Vec<_>>();
 
             if options.content.is_some()
                 && options.content.as_ref().unwrap().len()
@@ -379,12 +396,19 @@ pub fn draw_box(
                 }
             }
 
-            buffer[middle_index as usize] = format!(
-                "{}{}{}",
-                middle_prefix,
-                compile_border_string(&this_line),
-                middle_suffix
-            );
+            // Combine the prefix, content, and suffix into the final line
+            let mut buffer_line = Vec::new();
+            buffer_line.extend(middle_prefix);
+            buffer_line.extend(this_line.iter().map(|c| c.clone()));
+            buffer_line.extend(middle_suffix);
+            buffer[middle_index as usize] = buffer_line;
+
+            // buffer[middle_index as usize] = format!(
+            //     "{}{}{}",
+            //     middle_prefix,
+            //     compile_border_string(&this_line),
+            //     middle_suffix
+            // );
 
             // if options.position.x == 20 {
             //     panic!(

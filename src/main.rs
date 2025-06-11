@@ -8,6 +8,9 @@ mod common;
 mod draw;
 use draw::border::BorderFlags;
 
+use crate::common::compile_buffer;
+use crate::draw::boxes::BoxChar;
+
 fn main() {
     let mut stdout = stdout().into_raw_mode().unwrap();
     let stdin = stdin();
@@ -16,7 +19,9 @@ fn main() {
     let size = termion::terminal_size().unwrap();
     println!("Terminal size: {}x{}", size.0, size.1);
 
-    let mut buffer = vec![" ".repeat(size.0.into()); size.1 as usize];
+    // let mut buffer = vec![" ".repeat(size.0.into()); size.1 as usize];
+    let mut buffer: Vec<Vec<BoxChar>> =
+        vec![vec![BoxChar::default(); size.0 as usize]; size.1 as usize];
 
     draw::boxes::draw_box(
         &mut buffer,
@@ -74,7 +79,7 @@ fn main() {
 
     write!(stdout, "{}", termion::cursor::Hide).unwrap();
 
-    let final_buffer = buffer.join("\r\n");
+    let final_buffer = compile_buffer(&buffer); //buffer.join("\r\n");
     write!(
         stdout,
         "{}{}{}",
@@ -87,7 +92,7 @@ fn main() {
     stdout.flush().unwrap();
 
     for k in stdin.keys() {
-        let final_buffer = buffer.join("\r\n");
+        let final_buffer = compile_buffer(&buffer); //buffer.join("\r\n");
 
         write!(
             stdout,

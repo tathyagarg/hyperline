@@ -1,5 +1,7 @@
 use regex::Regex;
 
+use crate::draw::boxes::BoxChar;
+
 pub struct Vec2<T = usize> {
     pub x: T,
     pub y: T,
@@ -89,4 +91,17 @@ pub fn take_visible_chars(s: &str, n: usize) -> String {
     }
 
     result
+}
+
+pub fn compile_buffer(buffer: &Vec<Vec<BoxChar>>) -> String {
+    let mut result = String::new();
+    for row in buffer {
+        for box_char in row {
+            result.push_str(&box_char.to_string());
+        }
+        result.push('\r');
+        result.push('\n');
+    }
+
+    result[..result.len() - 2].to_string()
 }
