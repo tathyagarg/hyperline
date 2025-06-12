@@ -242,7 +242,7 @@ pub fn draw_box(buffer: &mut Vec<Vec<BoxChar>>, options: BoxOptions) -> Result<(
     }
 
     // Part 3: Middle border
-    let mut middle_border_data = make_border(
+    let middle_border_data = make_border(
         determine_edge(
             &options.border_options,
             &options.border_style,
@@ -365,88 +365,4 @@ pub fn draw_box(buffer: &mut Vec<Vec<BoxChar>>, options: BoxOptions) -> Result<(
     }
 
     Ok(())
-}
-
-pub fn draw_borderless_box(buffer: &mut Vec<Vec<BoxChar>>, options: BoxOptions) {
-    for i in 0..options.size.y {
-        let middle_index = options.position.y + (i as i16);
-        if middle_index >= 0 && middle_index < (buffer.len() as i16) {
-            // let mut this_line = vec![BoxChar::default(); options.size.x];
-            let mut this_line = buffer[middle_index as usize]
-                .iter()
-                .skip(cmp::max(0, options.position.x) as usize)
-                .take(cmp::min(
-                    options.screen_size.x,
-                    cmp::min(
-                        options.size.x,
-                        (options.screen_size.x as i16 - options.position.x) as usize,
-                    ),
-                ))
-                .map(|c| c.clone())
-                .collect::<Vec<_>>();
-
-            add_background_color(
-                &mut this_line,
-                &options.border_style,
-                &options.background_color,
-            );
-            add_text_color(&mut this_line, &options.border_style, &options.text_color);
-
-            if options.content.is_some()
-                && options.content.as_ref().unwrap().len()
-                    > i - (options.border_options.contains(BorderFlags::TOP) as usize)
-            {
-                let content = options
-                    .content
-                    .as_ref()
-                    .unwrap()
-                    .get(i - (options.border_options.contains(BorderFlags::TOP) as usize))
-                    .unwrap();
-
-                for (j, char) in content
-                    .chars()
-                    .skip(cmp::max(0, -options.position.x - 1) as usize)
-                    .enumerate()
-                {
-                    let index = j
-                        + (options.border_options.contains(BorderFlags::LEFT)
-                            && options.position.x > 0) as usize;
-
-                    if index
-                        >= this_line.len()
-                            - (options.border_options.contains(BorderFlags::RIGHT)
-                                && (options.position.x + options.size.x as i16)
-                                    < (options.screen_size.x as i16))
-                                as usize
-                    {
-                        continue;
-                    } else {
-                        this_line[index].content = char.to_string();
-                    }
-                }
-            }
-
-            // Combine the prefix, content, and suffix into the final line
-            let prefix = buffer[middle_index as usize]
-                .iter()
-                .take(cmp::max(options.position.x, 0) as usize)
-                .map(|c| c.clone())
-                .collect::<Vec<_>>();
-
-            let suffix = buffer[middle_index as usize]
-                .get(prefix.len() + this_line.len()..)
-                .unwrap_or(&vec![])
-                .iter()
-                .map(|c| c.clone())
-                .collect::<Vec<_>>();
-
-            let mut buffer_line = Vec::new();
-
-            buffer_line.extend(prefix);
-            buffer_line.extend(this_line.iter().map(|c| c.clone()));
-            buffer_line.extend(suffix);
-
-            buffer[middle_index as usize] = buffer_line;
-        }
-    }
 }

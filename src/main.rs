@@ -75,13 +75,13 @@ fn main() {
     )
     .unwrap();
 
-    draw::boxes::draw_borderless_box(
+    draw::boxes::draw_box(
         &mut buffer,
         draw::boxes::BoxOptions {
             screen_size: common::Vec2::new(size.0 as usize, size.1 as usize),
 
             position: common::Vec2::new(0, size.1 as i16 - 5),
-            size: common::Vec2::new(25, 2),
+            size: common::Vec2::new(8, 2),
 
             border_options: BorderFlags::NONE,
             border_style: draw::border::BorderStyle::Rounded,
@@ -95,7 +95,8 @@ fn main() {
                 "Press 'q' to exit.".to_string(),
             ]),
         },
-    );
+    )
+    .unwrap();
 
     write!(stdout, "{}", termion::cursor::Hide).unwrap();
 
