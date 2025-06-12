@@ -46,7 +46,6 @@ fn main() {
                 "Press 'q' to exit.".to_string(),
             ]),
         },
-        false,
     )
     .unwrap();
 
@@ -62,7 +61,7 @@ fn main() {
                 | BorderFlags::RIGHT
                 | BorderFlags::BOTTOM
                 | BorderFlags::LEFT,
-            border_style: draw::border::BorderStyle::Double,
+            border_style: draw::border::BorderStyle::Sharp,
 
             border_color: Some(common::Color::GREEN),
             background_color: Some(common::Color::BLACK),
@@ -73,9 +72,30 @@ fn main() {
                 "Press 'q' to exit.".to_string(),
             ]),
         },
-        false,
     )
     .unwrap();
+
+    draw::boxes::draw_borderless_box(
+        &mut buffer,
+        draw::boxes::BoxOptions {
+            screen_size: common::Vec2::new(size.0 as usize, size.1 as usize),
+
+            position: common::Vec2::new(0, size.1 as i16 - 5),
+            size: common::Vec2::new(25, 2),
+
+            border_options: BorderFlags::NONE,
+            border_style: draw::border::BorderStyle::Rounded,
+
+            border_color: None,
+            background_color: Some(common::Color::CYAN),
+            text_color: Some(common::Color::MAGENTA),
+
+            content: Some(vec![
+                "This is a borderless box.".to_string(),
+                "Press 'q' to exit.".to_string(),
+            ]),
+        },
+    );
 
     write!(stdout, "{}", termion::cursor::Hide).unwrap();
 

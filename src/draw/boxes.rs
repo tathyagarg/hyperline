@@ -28,24 +28,27 @@ pub struct BoxOptions {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BoxChar {
-    prefix: String,
+    fg: String,
+    bg: String,
+    // prefix: String,
     content: String,
-    suffix: String,
 }
 
 impl Default for BoxChar {
     fn default() -> Self {
         BoxChar {
-            prefix: String::new(),
+            fg: String::new(),
+            bg: String::new(),
+            // prefix: String::new(),
             content: String::from(" "),
-            suffix: String::new(),
         }
     }
 }
 
 impl BoxChar {
     pub fn to_string(&self) -> String {
-        format!("{}{}{}", self.prefix, self.content, self.suffix)
+        // format!("{}{}{}", self.prefix, self.content, self.suffix)
+        format!("{}{}{}\x1b[0m", self.fg, self.bg, self.content)
     }
 }
 
@@ -53,30 +56,29 @@ fn make_border(left: &str, middle: &str, right: &str, width: usize) -> Vec<BoxCh
     let mut border_str = Vec::new();
 
     border_str.push(BoxChar {
-        prefix: String::new(),
+        fg: String::new(),
+        bg: String::new(),
         content: left.to_string(),
-        suffix: String::new(),
     });
-
     for _ in 0..width {
         border_str.push(BoxChar {
-            prefix: String::new(),
+            fg: String::new(),
+            bg: String::new(),
             content: middle.to_string(),
-            suffix: String::new(),
         });
     }
 
     border_str.push(BoxChar {
-        prefix: String::new(),
+        fg: String::new(),
+        bg: String::new(),
         content: right.to_string(),
-        suffix: String::new(),
     });
 
     border_str
 }
 
 fn add_background_color(
-    border: &mut Vec<&mut BoxChar>,
+    border: &mut Vec<BoxChar>,
     border_style: &border::BorderStyle,
     background_color: &Option<common::Color>,
 ) {
@@ -84,70 +86,47 @@ fn add_background_color(
         let border_width = border_style.chars().border_width();
         let bg_ansi = bg_color.bg();
 
-        if border.first_mut().unwrap().content.len() == border_width {
-            if let Some(character) = border.get_mut(1) {
-                character.prefix.insert_str(0, &bg_ansi);
-            }
+        let skipping = (border.first().unwrap().content.len() == border_width) as usize;
+        let taking = border.len()
+            - (border.last().unwrap().content.len() == border_width) as usize
+            - skipping;
 
-            let mut index = border.len() - 1;
-            if border.last().unwrap().content.len() == border_width {
-                index -= 1;
-            }
-            if let Some(last) = border.get_mut(index) {
-                last.suffix.insert_str(0, "\x1b[0m");
-            }
-        } else {
-            border.first_mut().unwrap().prefix.insert_str(0, &bg_ansi);
-
-            let mut index = border.len() - 1;
-            if border.last().unwrap().content.len() == border_width {
-                index -= 1;
-            }
-
-            border
-                .get_mut(index)
-                .unwrap()
-                .suffix
-                .insert_str(0, "\x1b[0m");
+        for char in border.iter_mut().skip(skipping).take(taking) {
+            char.bg = bg_ansi.clone();
         }
     }
 }
 
-fn add_left_border_color(border: &mut Vec<&mut BoxChar>, border_color: &Option<common::Color>) {
+fn add_left_border_color(border: &mut Vec<BoxChar>, border_color: &Option<common::Color>) {
     if let Some(border_color) = border_color {
         let border_ansi = border_color.fg();
         if let Some(first) = border.first_mut() {
-            first.prefix.insert_str(0, &border_ansi);
-            first.suffix.insert_str(0, "\x1b[0m");
+            first.fg = border_ansi.clone();
         }
     }
 }
 
-fn add_right_border_color(border: &mut Vec<&mut BoxChar>, border_color: &Option<common::Color>) {
+fn add_right_border_color(border: &mut Vec<BoxChar>, border_color: &Option<common::Color>) {
     if let Some(border_color) = border_color {
         let border_ansi = border_color.fg();
         if let Some(last) = border.last_mut() {
-            last.prefix.insert_str(0, &border_ansi);
-            last.suffix.insert_str(0, "\x1b[0m");
+            last.fg = border_ansi.clone();
         }
     }
 }
 
-fn add_edge_border_color(border: &mut Vec<&mut BoxChar>, border_color: &Option<common::Color>) {
+fn add_edge_border_color(border: &mut Vec<BoxChar>, border_color: &Option<common::Color>) {
     if let Some(border_color) = border_color {
         let border_ansi = border_color.fg();
-        if let Some(first) = border.first_mut() {
-            first.prefix.insert_str(0, &border_ansi);
-        }
 
-        if let Some(last) = border.last_mut() {
-            last.suffix.insert_str(0, "\x1b[0m");
+        for char in border.iter_mut() {
+            char.fg = border_ansi.clone();
         }
     }
 }
 
 fn add_text_color(
-    border: &mut Vec<&mut BoxChar>,
+    border: &mut Vec<BoxChar>,
     border_style: &border::BorderStyle,
     text_color: &Option<common::Color>,
 ) {
@@ -170,7 +149,7 @@ fn add_text_color(
             .skip(start_index)
             .take(last_index - start_index + 1)
         {
-            char.prefix.insert_str(0, &text_ansi);
+            char.fg = text_ansi.clone();
         }
     }
 }
@@ -207,6 +186,7 @@ fn draw_edge(
                 (options.screen_size.x as i16 - options.position.x) as usize,
             ),
         ))
+        .map(|c| c.clone())
         .collect::<Vec<_>>();
 
     let prefix = buffer[index]
@@ -242,11 +222,7 @@ fn draw_edge(
     buffer[index] = new_row;
 }
 
-pub fn draw_box(
-    buffer: &mut Vec<Vec<BoxChar>>,
-    options: BoxOptions,
-    crash: bool,
-) -> Result<(), DrawError> {
+pub fn draw_box(buffer: &mut Vec<Vec<BoxChar>>, options: BoxOptions) -> Result<(), DrawError> {
     if options.position.y >= 0 && options.border_options.contains(BorderFlags::TOP) {
         draw_edge(
             buffer,
@@ -282,7 +258,7 @@ pub fn draw_box(
     );
 
     let mut middle_border = middle_border_data
-        .iter_mut()
+        .iter()
         .skip(cmp::max(0, -options.position.x) as usize)
         .take(cmp::min(
             options.screen_size.x,
@@ -291,6 +267,7 @@ pub fn draw_box(
                 (options.screen_size.x as i16 - options.position.x) as usize,
             ),
         ))
+        .map(|c| c.clone())
         .collect::<Vec<_>>();
 
     add_background_color(
@@ -331,20 +308,11 @@ pub fn draw_box(
                 .map(|c| (*c).clone())
                 .collect::<Vec<_>>();
 
-            // let middle_prefix = common::take_visible_chars(
-            //     &buffer[middle_index as usize],
-            //     cmp::max(options.position.x, 0) as usize,
-            // );
-
             let middle_prefix = buffer[middle_index as usize]
                 .iter()
                 .take(cmp::max(options.position.x, 0) as usize)
                 .map(|c| c.clone())
                 .collect::<Vec<_>>();
-
-            // let middle_suffix = &buffer[middle_index as usize]
-            //     .get(middle_prefix.len() + middle_border.len()..)
-            //     .unwrap_or("");
 
             let middle_suffix = buffer[middle_index as usize]
                 .get(middle_prefix.len() + this_line.len()..)
@@ -393,26 +361,92 @@ pub fn draw_box(
             buffer_line.extend(this_line.iter().map(|c| c.clone()));
             buffer_line.extend(middle_suffix);
             buffer[middle_index as usize] = buffer_line;
-
-            // buffer[middle_index as usize] = format!(
-            //     "{}{}{}",
-            //     middle_prefix,
-            //     compile_border_string(&this_line),
-            //     middle_suffix
-            // );
-
-            // if options.position.x == 20 {
-            //     panic!(
-            //         "\rmiddle_prefix: '{}',\r\nline: {:?},\r\nindex: {}",
-            //         middle_prefix, this_line, middle_index
-            //     );
-            // }
         }
     }
 
-    if crash {
-        return Err(DrawError::HeightTooSmall);
-    }
-
     Ok(())
+}
+
+pub fn draw_borderless_box(buffer: &mut Vec<Vec<BoxChar>>, options: BoxOptions) {
+    for i in 0..options.size.y {
+        let middle_index = options.position.y + (i as i16);
+        if middle_index >= 0 && middle_index < (buffer.len() as i16) {
+            // let mut this_line = vec![BoxChar::default(); options.size.x];
+            let mut this_line = buffer[middle_index as usize]
+                .iter()
+                .skip(cmp::max(0, options.position.x) as usize)
+                .take(cmp::min(
+                    options.screen_size.x,
+                    cmp::min(
+                        options.size.x,
+                        (options.screen_size.x as i16 - options.position.x) as usize,
+                    ),
+                ))
+                .map(|c| c.clone())
+                .collect::<Vec<_>>();
+
+            add_background_color(
+                &mut this_line,
+                &options.border_style,
+                &options.background_color,
+            );
+            add_text_color(&mut this_line, &options.border_style, &options.text_color);
+
+            if options.content.is_some()
+                && options.content.as_ref().unwrap().len()
+                    > i - (options.border_options.contains(BorderFlags::TOP) as usize)
+            {
+                let content = options
+                    .content
+                    .as_ref()
+                    .unwrap()
+                    .get(i - (options.border_options.contains(BorderFlags::TOP) as usize))
+                    .unwrap();
+
+                for (j, char) in content
+                    .chars()
+                    .skip(cmp::max(0, -options.position.x - 1) as usize)
+                    .enumerate()
+                {
+                    let index = j
+                        + (options.border_options.contains(BorderFlags::LEFT)
+                            && options.position.x > 0) as usize;
+
+                    if index
+                        >= this_line.len()
+                            - (options.border_options.contains(BorderFlags::RIGHT)
+                                && (options.position.x + options.size.x as i16)
+                                    < (options.screen_size.x as i16))
+                                as usize
+                    {
+                        continue;
+                    } else {
+                        this_line[index].content = char.to_string();
+                    }
+                }
+            }
+
+            // Combine the prefix, content, and suffix into the final line
+            let prefix = buffer[middle_index as usize]
+                .iter()
+                .take(cmp::max(options.position.x, 0) as usize)
+                .map(|c| c.clone())
+                .collect::<Vec<_>>();
+
+            let suffix = buffer[middle_index as usize]
+                .get(prefix.len() + this_line.len()..)
+                .unwrap_or(&vec![])
+                .iter()
+                .map(|c| c.clone())
+                .collect::<Vec<_>>();
+
+            let mut buffer_line = Vec::new();
+
+            buffer_line.extend(prefix);
+            buffer_line.extend(this_line.iter().map(|c| c.clone()));
+            buffer_line.extend(suffix);
+
+            buffer[middle_index as usize] = buffer_line;
+        }
+    }
 }
