@@ -49,15 +49,6 @@ impl BoxChar {
     }
 }
 
-fn compile_border_string(border_chars: &Vec<&mut BoxChar>) -> String {
-    let mut border_string = String::new();
-    for border_char in border_chars.iter() {
-        border_string.push_str(&border_char.to_string());
-    }
-
-    border_string
-}
-
 fn make_border(left: &str, middle: &str, right: &str, width: usize) -> Vec<BoxChar> {
     let mut border_str = Vec::new();
 

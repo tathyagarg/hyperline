@@ -1,5 +1,3 @@
-use regex::Regex;
-
 use crate::draw::boxes::BoxChar;
 
 pub struct Vec2<T = usize> {
@@ -52,45 +50,6 @@ impl Color {
     pub fn bg(&self) -> String {
         format!("\x1b[48;2;{};{};{}m", self.r, self.g, self.b)
     }
-}
-
-pub fn visible_len(s: &str) -> usize {
-    let re = Regex::new(r"\x1b\[[0-9;]*[a-zA-Z]").unwrap();
-    let cleaned = re.replace_all(s, "");
-    cleaned.chars().count()
-}
-
-pub fn take_visible_chars(s: &str, n: usize) -> String {
-    let mut result = String::new();
-    let mut count = 0;
-    let mut i = 0;
-    let bytes = s.as_bytes();
-
-    while i < bytes.len() && count < n {
-        if bytes[i] == b'\x1b' {
-            result.push('\x1b');
-            i += 1;
-
-            while i < bytes.len() {
-                let c = bytes[i] as char;
-                result.push(c);
-                i += 1;
-
-                if c == 'm' || c == 'K' || c == 'J' {
-                    break;
-                }
-            }
-        } else {
-            let ch = s[i..].chars().next().unwrap();
-            result.push(ch);
-
-            i += ch.len_utf8();
-
-            count += 1;
-        }
-    }
-
-    result
 }
 
 pub fn compile_buffer(buffer: &Vec<Vec<BoxChar>>) -> String {

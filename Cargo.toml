@@ -5,5 +5,4 @@ edition = "2024"
 
 [dependencies]
 bitflags = "2.9.1"
-regex = "1.11.1"
 termion = "4.0.5"
