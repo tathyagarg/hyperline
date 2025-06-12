@@ -222,7 +222,7 @@ fn draw_edge(
     buffer[index] = new_row;
 }
 
-pub fn draw_box(buffer: &mut Vec<Vec<BoxChar>>, options: BoxOptions) -> Result<(), DrawError> {
+pub fn draw_box(buffer: &mut Vec<Vec<BoxChar>>, options: BoxOptions) -> () {
     if options.position.y >= 0 && options.border_options.contains(BorderFlags::TOP) {
         draw_edge(
             buffer,
@@ -363,6 +363,4 @@ pub fn draw_box(buffer: &mut Vec<Vec<BoxChar>>, options: BoxOptions) -> Result<(
             buffer[middle_index as usize] = buffer_line;
         }
     }
-
-    Ok(())
 }
