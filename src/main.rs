@@ -20,8 +20,8 @@ fn main() {
     window.draw_box(window::DivOptions {
         id: Some("block_border_box".to_string()),
 
-        position: common::Vec2::new(-2, 0),
-        size: common::Vec2::new(10, size.1 as usize),
+        position: common::Vec2::new(0, 0),
+        size: common::Vec2::new(size.0 as usize, size.1 as usize),
 
         border_options: BorderFlags::TOP
             | BorderFlags::RIGHT
@@ -39,43 +39,32 @@ fn main() {
         ]),
     });
 
-    window.draw_box(window::DivOptions {
-        id: Some("double_border_box".to_string()),
+    window
+        .draw_box_under(
+            &"block_border_box".to_string(),
+            window::DivOptions {
+                id: Some("block_border_box_under".to_string()),
 
-        position: common::Vec2::new(size.0 as i16 - 18, 10),
-        size: common::Vec2::new(20, 10 as usize),
+                position: common::Vec2::new(10, 10),
+                size: common::Vec2::new(16, 8),
 
-        border_options: BorderFlags::TOP | BorderFlags::RIGHT,
-        border_style: draw::border::BorderStyle::Double,
+                border_options: BorderFlags::TOP
+                    | BorderFlags::RIGHT
+                    | BorderFlags::BOTTOM
+                    | BorderFlags::LEFT,
+                border_style: draw::border::BorderStyle::Rounded,
 
-        border_color: Some(common::Color::GREEN),
-        background_color: Some(common::Color::BLACK),
-        text_color: Some(common::Color::YELLOW),
+                border_color: Some(common::Color::GREEN),
+                background_color: Some(common::Color::BLACK),
+                text_color: Some(common::Color::WHITE),
 
-        content: Some(vec![
-            "This is a double border box.".to_string(),
-            "Press 'q' to exit.".to_string(),
-        ]),
-    });
-
-    window.draw_box(window::DivOptions {
-        id: Some("borderless_box".to_string()),
-
-        position: common::Vec2::new(0, size.1 as i16 - 5),
-        size: common::Vec2::new(8, 2),
-
-        border_options: BorderFlags::RIGHT,
-        border_style: draw::border::BorderStyle::Rounded,
-
-        border_color: Some(common::Color::RED),
-        background_color: Some(common::Color::CYAN),
-        text_color: Some(common::Color::MAGENTA),
-
-        content: Some(vec![
-            "This is a borderless box.".to_string(),
-            "Press 'q' to exit.".to_string(),
-        ]),
-    });
+                content: Some(vec![
+                    "This is an under box.".to_string(),
+                    "It is under the main box.".to_string(),
+                ]),
+            },
+        )
+        .unwrap();
 
     write!(window.stdout, "{}", termion::cursor::Hide).unwrap();
 

@@ -280,7 +280,7 @@ pub fn draw_box(buffer: &mut Vec<Vec<BoxChar>>, options: BoxOptions) -> () {
     }
 
     if options.border_options.contains(BorderFlags::RIGHT)
-        && (options.position.x + options.size.x as i16) < (options.screen_size.x as i16)
+        && (options.position.x + options.size.x as i16) <= (options.screen_size.x as i16)
     {
         add_right_border_color(&mut middle_border, &options.border_color);
     }
@@ -338,7 +338,7 @@ pub fn draw_box(buffer: &mut Vec<Vec<BoxChar>>, options: BoxOptions) -> () {
                 {
                     let index = j
                         + (options.border_options.contains(BorderFlags::LEFT)
-                            && options.position.x > 0) as usize;
+                            && options.position.x >= 0) as usize;
 
                     if index
                         >= this_line.len()

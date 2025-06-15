@@ -46,9 +46,7 @@ impl Container {
         }
     }
 
-    pub fn draw_box(&mut self, div_options: DivOptions) -> () {
-        let size = &self.size;
-
+    fn draw_under_size(&mut self, size: &Vec2, div_options: DivOptions) -> () {
         let option_data = div_options.clone();
 
         let options = boxes::BoxOptions {
@@ -72,6 +70,21 @@ impl Container {
         }
 
         draw_box(&mut self.buffer, options);
+    }
+
+    pub fn draw_box(&mut self, div_options: DivOptions) -> () {
+        let size = self.size.clone();
+        self.draw_under_size(&size, div_options);
+    }
+
+    pub fn draw_box_under(&mut self, id: &String, div_options: DivOptions) -> Result<(), String> {
+        if let Some(res) = self.objects.iter().find(|x| x.id.as_ref() == Some(id)) {
+            let size = res.size.clone();
+            self.draw_under_size(&size, div_options);
+            Ok(())
+        } else {
+            Err(format!("No object with id '{}' found.", id))
+        }
     }
 
     fn make_render(&mut self) -> String {
