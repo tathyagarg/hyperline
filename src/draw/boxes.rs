@@ -1,8 +1,7 @@
 use std::cmp;
 
 use crate::common;
-use crate::draw::border::BorderFlags;
-use crate::draw::border::{self, determine_edge};
+use crate::draw::border::{self, BorderFlags, determine_edge};
 
 #[derive(Debug)]
 pub enum DrawError {
@@ -10,8 +9,8 @@ pub enum DrawError {
     // ContentTooLong,
 }
 
-pub struct BoxOptions {
-    pub screen_size: common::Vec2,
+pub struct BoxOptions<'a> {
+    pub screen_size: &'a common::Vec2,
 
     pub position: common::Vec2<i16>,
     pub size: common::Vec2,

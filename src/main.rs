@@ -8,16 +8,17 @@ mod draw;
 mod window;
 
 use draw::border::BorderFlags;
-use window::Window;
+use window::Container;
 
 fn main() {
     let stdin = stdin();
 
     let size = termion::terminal_size().unwrap();
 
-    let mut window = Window::new(common::Vec2::new(size.0 as usize, size.1 as usize));
-    window.draw_box(draw::boxes::BoxOptions {
-        screen_size: common::Vec2::new(size.0 as usize, size.1 as usize),
+    let mut window = Container::new(common::Vec2::new(size.0 as usize, size.1 as usize));
+
+    window.draw_box(window::DivOptions {
+        id: Some("block_border_box".to_string()),
 
         position: common::Vec2::new(-2, 0),
         size: common::Vec2::new(10, size.1 as usize),
@@ -38,17 +39,14 @@ fn main() {
         ]),
     });
 
-    window.draw_box(draw::boxes::BoxOptions {
-        screen_size: common::Vec2::new(size.0 as usize, size.1 as usize),
+    window.draw_box(window::DivOptions {
+        id: Some("double_border_box".to_string()),
 
         position: common::Vec2::new(size.0 as i16 - 18, 10),
         size: common::Vec2::new(20, 10 as usize),
 
-        border_options: BorderFlags::TOP
-            | BorderFlags::RIGHT
-            | BorderFlags::BOTTOM
-            | BorderFlags::LEFT,
-        border_style: draw::border::BorderStyle::Sharp,
+        border_options: BorderFlags::TOP | BorderFlags::RIGHT,
+        border_style: draw::border::BorderStyle::Double,
 
         border_color: Some(common::Color::GREEN),
         background_color: Some(common::Color::BLACK),
@@ -60,8 +58,8 @@ fn main() {
         ]),
     });
 
-    window.draw_box(draw::boxes::BoxOptions {
-        screen_size: common::Vec2::new(size.0 as usize, size.1 as usize),
+    window.draw_box(window::DivOptions {
+        id: Some("borderless_box".to_string()),
 
         position: common::Vec2::new(0, size.1 as i16 - 5),
         size: common::Vec2::new(8, 2),

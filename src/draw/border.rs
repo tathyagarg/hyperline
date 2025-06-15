@@ -83,6 +83,7 @@ const DOTTED_BORDER_CHARS: BorderChars = BorderChars {
     bottom_right: "┘",
 };
 
+#[derive(Clone)]
 pub enum BorderStyle {
     Block,
     Rounded,

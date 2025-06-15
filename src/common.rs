@@ -1,10 +1,12 @@
 use crate::draw::boxes::BoxChar;
 
+#[derive(Clone)]
 pub struct Vec2<T = usize> {
     pub x: T,
     pub y: T,
 }
 
+#[derive(Clone)]
 pub struct Color {
     pub r: u8,
     pub g: u8,
